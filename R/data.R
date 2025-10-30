@@ -163,18 +163,18 @@ est_adjusted <- function(Y, Z, X, center = TRUE, hc_type = "HC3") {
 
 
 
-
-
-
-X <- gen_X(n = 100, K = 5, seed = 123)
-beta <- gen_beta(Sigma = diag(5), R2 = 0.5, seed = 123)
-Y <- gen_Y(X = X$X, beta = beta)
-
-
-Z <- ReM(X = X$X, n_1 = 50, p_a = 0.1, seed = 123)$Z
-
-est_unadjusted(Y = Y$Y1 * Z + Y$Y0 * (1 - Z), Z = Z)
-est_adjusted(Y = Y$Y1 * Z + Y$Y0 * (1 - Z), Z = Z, X = X$X)
+# 
+# 
+# 
+# X <- gen_X(n = 100, K = 5, seed = 123)
+# beta <- gen_beta(Sigma = diag(5), R2 = 0.5, seed = 123)
+# Y <- gen_Y(X = X$X, beta = beta)
+# 
+# 
+# Z <- ReM(X = X$X, n_1 = 50, p_a = 0.1, seed = 123)$Z
+# 
+# est_unadjusted(Y = Y$Y1 * Z + Y$Y0 * (1 - Z), Z = Z)
+# est_adjusted(Y = Y$Y1 * Z + Y$Y0 * (1 - Z), Z = Z, X = X$X)
 
 
 
