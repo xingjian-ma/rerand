@@ -2,6 +2,7 @@
 #'
 #' This function implements a rerandomization design based on Mahalanobis distance.
 #' @param X Numerical matrix; covariate matrix with n rows (units) and K columns (covariates). n >= 2 and K >= 1.
+#' @param Y Numerical matrix; potential outcomes matrix with n rows and 2 columns (Y(0), Y(1)).
 #' @param n_1 Integer scalar; number of units to assign to treatment. n_1 > 0 and n_1 < nrow(X).
 #' @param p_a Numeric scalar; acceptance probability in (0, 1], default is 0.1.
 #' @param a Numeric scalar; Mahalanobis distan. If NULL, it is computed from p_a. Default is NULL. If provided, p_a is ignored.
@@ -11,6 +12,7 @@
 #' @return A list containing:
 #' \describe{
 #'   \item{Z}{Numeric vector; accepted treatment assignment with length n and values 0 (control) or 1 (treatment).}
+#'   \item{Y_obs}{Numeric vector; observed outcomes corresponding to the accepted assignment.}
 #'   \item{tries}{Integer scalar; number of random draws made until acceptance.}
 #'   \item{M}{Numeric scalar; Mahalanobis distance of the accepted assignment.}
 #'   \item{a}{Numeric scalar; threshold Mahalanobis distance used for acceptance.}
@@ -20,10 +22,12 @@
 #' @examples
 #' set.seed(123)
 #' X <- matrix(rnorm(100 * 3), nrow = 100, ncol = 3)  # 100 units, 3 covariates
-#' result <- ReM(X, n_1 = 50, p_a = 0.1, max_tries = 10000)
+#' Y <- matrix(rnorm(100 * 2), nrow = 100, ncol = 2)  # potential outcomes
+#' result <- ReM(X, Y, n_1 = 50, p_a = 0.1, max_tries = 10000)
 #'
 #' @export
 ReM <- function(X,
+                Y,
                 n_1,
                 p_a = 0.1,
                 a = NULL,
@@ -32,6 +36,7 @@ ReM <- function(X,
 
   # Check inputs
   checkmate::assert_matrix(X, mode = "numeric", min.rows = 2, min.cols = 1, any.missing = FALSE)
+  checkmate::assert_matrix(Y, mode = "numeric", ncols = 2, nrows = nrow(X), any.missing = FALSE)
   checkmate::assert_count(n_1)
   checkmate::assert_numeric(p_a, lower = 0, upper = 1, len = 1, any.missing = FALSE)
   checkmate::assert_true(p_a > 0)
@@ -78,7 +83,11 @@ ReM <- function(X,
     # check acceptance
     if (M <= a) {
       # accepted
+
+      Y_obs <- Y[, 1] * (1 - Z) + Y[, 2] * Z  # observed outcomes
+
       return(list(Z = Z,
+                  Y_obs = Y_obs,
                   tries = t,
                   M     = M,
                   a     = a,
@@ -86,8 +95,11 @@ ReM <- function(X,
     }
   }
 
+  Y_obs <- Y[, 1] * (1 - Z) + Y[, 2] * Z  # observed outcomes
+
   warning("Maximum tries exceeded without reaching threshold. Returning last assignment anyway.")
   return(list(Z     = Z,
+              Y_obs = Y_obs,
               tries = max_tries,
               M     = M,
               a     = a,
