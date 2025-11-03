@@ -20,10 +20,10 @@ gen_X <- function(n, K, Sigma_X = diag(K), seed = NULL) {
   checkmate::assert_count(K)
   checkmate::assert_matrix(Sigma_X, mode = "numeric", nrows = K, ncols = K, any.missing = FALSE)
   # still need to check psd
-  checkmate::assert_count(seed)
+  checkmate::assert_count(seed, null.ok = TRUE)
 
-  as.integer(n)
-  as.integer(K)
+  n <- as.integer(n)
+  K <- as.integer(K)
 
   checkmate::assert_integer(n, lower = 2, any.missing = FALSE)
   checkmate::assert_integer(K, lower = 1, any.missing = FALSE)
@@ -34,7 +34,7 @@ gen_X <- function(n, K, Sigma_X = diag(K), seed = NULL) {
 
 
   # Generate X ~ N(0, Sigma)
-  X <- MASS::mvrnorm(n = n, mu = rep(0, K), Sigma_X = Sigma_X)
+  X <- MASS::mvrnorm(n = n, mu = rep(0, K), Sigma = Sigma_X)
   return(X)
 }
 
@@ -64,8 +64,8 @@ gen_beta <- function(Sigma_X, R2, Sigma_e = 1, v = NULL, seed = NULL) {
   checkmate::assert_true(R2 < 1)
   checkmate::assert_numeric(Sigma_e, lower = 0, any.missing = FALSE, len = 1)
   checkmate::assert_true(Sigma_e > 0)
-  checkmate::assert_nu(v, any.missing = FALSE, len = ncol(Sigma_X))
-  checkmate::assert_count(seed)
+  checkmate::assert_numeric(v, any.missing = FALSE, len = ncol(Sigma_X), null.ok = TRUE)
+  checkmate::assert_count(seed, null.ok = TRUE)
 
   # Set parameters
   K <- ncol(Sigma_X)
@@ -76,8 +76,9 @@ gen_beta <- function(Sigma_X, R2, Sigma_e = 1, v = NULL, seed = NULL) {
   # Compute target variance scale
   c_target <- sqrt(R2 / (1 - R2)) * Sigma_e
   scale_fac <- c_target / sqrt(t(v) %*% Sigma_X %*% v)
-  beta <- as.numeric(scale_fac * v)
-  beta
+  beta <- c(scale_fac) * v
+  
+  return(beta)
 }
 
 
@@ -112,7 +113,7 @@ gen_Y <- function(X, beta, tau = 1, mu = 0, Sigma_e = 1, Sigma_tau = 0, seed = N
   checkmate::assert_numeric(Sigma_e, lower = 0, any.missing = FALSE, len = 1)
   checkmate::assert_true(Sigma_e > 0)
   checkmate::assert_numeric(Sigma_tau, lower = 0, any.missing = FALSE, len = 1)
-  checkmate::assert_count(seed)
+  checkmate::assert_count(seed, null.ok = TRUE)
 
   # Set parameters
   if (!is.null(seed)) set.seed(seed)

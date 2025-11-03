@@ -38,25 +38,30 @@ ReM <- function(X,
   checkmate::assert_matrix(X, mode = "numeric", min.rows = 2, min.cols = 1, any.missing = FALSE)
   checkmate::assert_matrix(Y, mode = "numeric", ncols = 2, nrows = nrow(X), any.missing = FALSE)
   checkmate::assert_count(n_1)
+  
   checkmate::assert_numeric(p_a, lower = 0, upper = 1, len = 1, any.missing = FALSE)
   checkmate::assert_true(p_a > 0)
-  checkmate::assert_numeric(a, lower = 0, len = 1, null.ok = TRUE, any.missing = FALSE)
-  checkmate::assert_true(a > 0)
-  checkmate::assert_count(max_tries, lower = 1, len = 1, any.missing = FALSE)
-  checkmate::assert_count(seed)
 
-  as.integer(n_1)
-  as.integer(max_tries)
+  
+  if (!is.null(a)){
+    checkmate::assert_numeric(a, lower = 0, len = 1, any.missing = FALSE)
+    checkmate::assert_true(a > 0)
+  }else{
+    # compute threshold a from p_a
+    K <- ncol(X)
+    a <- stats::qchisq(p = p_a, df = K)
+  }
+  
+  checkmate::assert_count(max_tries)
+  checkmate::assert_count(seed, null.ok = TRUE)
 
-  checkmate::assert_interger(n_1, lower = 1, upper = nrow(X) - 1, len = 1, any.missing = FALSE)
-  checkmate::assert_interger(max_tries, lower = 1, len = 1, any.missing = FALSE)
+  n_1 <- as.integer(n_1)
+  max_tries <- as.integer(max_tries)
+
+  checkmate::assert_integer(n_1, lower = 1, upper = nrow(X) - 1, len = 1, any.missing = FALSE)
+  checkmate::assert_integer(max_tries, lower = 1, len = 1, any.missing = FALSE)
 
   # Set parameters
-  if (!is.null(a)) {
-    # if a is provided, compute p_a from a
-    # since under complete randomization (and large n) M² ~ χ²_K approximately.
-    p_a <- pchisq(a, df = ncol(X))
-  }
   if (!is.null(seed)) set.seed(seed)
 
   # get dimensions
@@ -78,7 +83,7 @@ ReM <- function(X,
 
     # compute Mahalanobis distance
     diff   <- Xbar_1 - Xbar_0
-    M      <- as.numeric(t(diff) %*% S_inv %*% diff)
+    M      <- as.numeric(t(diff) %*% S_inv %*% diff)*(n_1 * n_0 / n)
 
     # check acceptance
     if (M <= a) {

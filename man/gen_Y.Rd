@@ -2,29 +2,27 @@
 % Please edit documentation in R/data.R
 \name{gen_Y}
 \alias{gen_Y}
-\title{Outcome Generation Function}
+\title{Potential Outcomes Generation Function}
 \usage{
-gen_Y(X, beta, tau = 1, mu = 0, Sigma_e = 1, seed = NULL)
+gen_Y(X, beta, tau = 1, mu = 0, Sigma_e = 1, Sigma_tau = 0, seed = NULL)
 }
 \arguments{
 \item{X}{Numeric matrix; n × K covariate matrix.}
 
 \item{beta}{Numeric vector; coefficient vector of length K.}
 
-\item{tau}{Numercalar; average treatment effect. Default is 1.}
+\item{tau}{Numeric scalar; average treatment effect. Default is 1.}
 
 \item{mu}{Numeric scalar; intercept term. Default is 0.}
 
 \item{Sigma_e}{Numeric scalar; standard deviation of the error term. Default is 1.}
 
+\item{Sigma_tau}{Numeric scalar; standard deviation of individual treatment effects. Default is 0 (constant treatment effect).}
+
 \item{seed}{Integer scalar; random seed for reproducibility. Default is NULL (no seed set).}
 }
 \value{
-A list containing:
-\describe{
-\item{Y0}{Numeric vector; outcomes under control with length n.}
-\item{Y1}{Numeric vector; outcomes under treatment with length n.}
-}
+Numeric matrix; n × 2 matrix of potential outcomes with first column Y(0) and second column Y(1).
 }
 \description{
 Generates potential outcomes Y(0) and Y(1) based on a linear model with covariates X, coefficients beta, treatment effect tau, and error term. If a treatment assignment vector Z is provided, it also computes the observed outcomes Y.
