@@ -4,8 +4,8 @@
 #' @param X Numerical matrix; covariate matrix with n rows (units) and K columns (covariates). n >= 2 and K >= 1.
 #' @param Y Numerical matrix; potential outcomes matrix with n rows and 2 columns (Y(0), Y(1)).
 #' @param n_1 Integer scalar; number of units to assign to treatment. n_1 > 0 and n_1 < nrow(X).
-#' @param p_a Numeric scalar; acceptance probability in (0, 1], default is 0.1.
-#' @param a Numeric scalar; Mahalanobis distan. If NULL, it is computed from p_a. Default is NULL. If provided, p_a is ignored.
+#' @param p_accept Numeric scalar; acceptance probability in (0, 1], default is 0.1.
+#' @param threshold Numeric scalar; threshold for Mahalanobis distance. If NULL, it is computed from p_accept. Default is NULL. If provided, p_accept will be ignored.
 #' @param max_tries Integer scalar; maximum number of random draws before giving up, default is 10000.
 #' @param seed Integer scalar; optional random seed for reproducibility, default is NULL.
 #'
@@ -14,9 +14,9 @@
 #'   \item{Z}{Numeric vector; accepted treatment assignment with length n and values 0 (control) or 1 (treatment).}
 #'   \item{Y_obs}{Numeric vector; observed outcomes corresponding to the accepted assignment.}
 #'   \item{tries}{Integer scalar; number of random draws made until acceptance.}
-#'   \item{M}{Numeric scalar; Mahalanobis distance of the accepted assignment.}
-#'   \item{a}{Numeric scalar; threshold Mahalanobis distance used for acceptance.}
-#'   \item{p_a}{Numeric scalar; acceptance probability used.}
+#'   \item{M}{Numeric scalar; Mahalanobis dsistance of the accepted assignment.}
+#'   \item{threshold}{Numeric scalar; threshold Mahalanobis distance used for acceptance.}
+#'   \item{p_accept}{Numeric scalar; acceptance probability used.}
 #' }
 #'
 #' @examples
@@ -29,8 +29,8 @@
 ReM <- function(X,
                 Y,
                 n_1,
-                p_a = 0.1,
-                a = NULL,
+                p_accept = 0.1,
+                threshold = NULL,
                 max_tries = 10000,
                 seed = NULL) {
 
@@ -38,6 +38,10 @@ ReM <- function(X,
   checkmate::assert_matrix(X, mode = "numeric", min.rows = 2, min.cols = 1, any.missing = FALSE)
   checkmate::assert_matrix(Y, mode = "numeric", ncols = 2, nrows = nrow(X), any.missing = FALSE)
   checkmate::assert_count(n_1)
+  
+  
+  p_a <- p_accept
+  a <- threshold
   
   checkmate::assert_numeric(p_a, lower = 0, upper = 1, len = 1, any.missing = FALSE)
   checkmate::assert_true(p_a > 0)
@@ -95,8 +99,8 @@ ReM <- function(X,
                   Y_obs = Y_obs,
                   tries = t,
                   M     = M,
-                  a     = a,
-                  p_a   = p_a))
+                  threshold = a,
+                  p_accept = p_a))
     }
   }
 
@@ -107,6 +111,6 @@ ReM <- function(X,
               Y_obs = Y_obs,
               tries = max_tries,
               M     = M,
-              a     = a,
-              p_a   = p_a))
+              threshold = a,
+              p_accept = p_a))
 }
