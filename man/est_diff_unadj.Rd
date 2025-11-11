@@ -2,21 +2,23 @@
 % Please edit documentation in R/analysis.R
 \name{est_diff_unadj}
 \alias{est_diff_unadj}
-\title{Unadjusted Diffference-in-Means Estimator Function}
+\title{Unadjusted Difference-in-Means Estimator Function}
 \usage{
-est_diff_unadj(Y_obs, Z)
+est_diff_unadj(Y_obs, Z, X = NULL)
 }
 \arguments{
 \item{Y_obs}{Numeric vector; observed outcomes with length n.}
 
 \item{Z}{Numeric vector; treatment assignment with length n (0 = control, 1 = treatment).}
+
+\item{X}{Numeric matrix; n × K covariate matrix, used for constructing improved variance estimator. Optional. Default is NULL.}
 }
 \value{
 A list containing:
 \describe{
 \item{tau_hat}{Numeric scalar; estimated ATE.}
-\item{se}{Numeric scalar; standard error of the estimate.}
-\item{ci}{Numeric vector; 95\% confidence interval for the ATE.}
+\item{se_neyman}{Numeric scalar; standard error of the estimate using Neyman's conservative variance estimator.}
+\item{se_ding}{Numeric scalar; standard error of the estimate using Ding's improved variance estimator.}
 \item{method}{Character scalar; method used ("difference-in-means unadjusted").}
 }
 }
