@@ -14,4 +14,8 @@ Imports:
     MASS,
     sandwich,
     car,
-    stats
+    stats,
+    Rcpp
+LinkingTo: 
+    Rcpp,
+    RcppArmadillo

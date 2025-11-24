@@ -8,6 +8,7 @@
 #' @param threshold Numeric scalar; threshold for Mahalanobis distance. If NULL, it is computed from p_accept. Default is NULL. If provided, p_accept will be ignored.
 #' @param max_tries Integer scalar; maximum number of random draws before giving up, default is 10000.
 #' @param seed Integer scalar; optional random seed for reproducibility, default is NULL.
+#' @param engine Character scalar; computation engine to use, either "R" or "cpp". Default is "cpp".
 #'
 #' @return A list containing:
 #' \describe{
@@ -17,6 +18,8 @@
 #'   \item{M}{Numeric scalar; Mahalanobis dsistance of the accepted assignment.}
 #'   \item{threshold}{Numeric scalar; threshold Mahalanobis distance used for acceptance.}
 #'   \item{p_accept}{Numeric scalar; acceptance probability used.}
+#'   \item{accepted}{Logical scalar; indicates whether an acceptable assignment was found within max_tries.}
+#'   \item{engine}{Character scalar; computation engine used ("R" or "cpp").
 #' }
 #'
 #' @examples
@@ -32,7 +35,8 @@ ReM <- function(X,
                 p_accept = 0.1,
                 threshold = NULL,
                 max_tries = 10000,
-                seed = NULL) {
+                seed = NULL,
+                engine = "cpp") {
 
   # Check inputs
   checkmate::assert_matrix(X, mode = "numeric", min.rows = 2, min.cols = 1, any.missing = FALSE)
@@ -72,45 +76,32 @@ ReM <- function(X,
   n <- nrow(X)
   K <- ncol(X)
   n_0 <- n - n_1
+  S_inv <- solve(cov(X))
 
-  # compute covariance estimate and its inverse
-  S   <- stats::cov(X)
-  S_inv <- solve(S)
-
-  for (t in seq_len(max_tries)) {
-    # draw an assignment vector Z
-    Z <- sample(c(rep(1, n_1), rep(0, n_0)))
-
-    # compute group means
-    Xbar_1 <- colMeans(X[Z == 1, , drop = FALSE])
-    Xbar_0 <- colMeans(X[Z == 0, , drop = FALSE])
-
-    # compute Mahalanobis distance
-    diff   <- Xbar_1 - Xbar_0
-    M      <- as.numeric(t(diff) %*% S_inv %*% diff)*(n_1 * n_0 / n)
-
-    # check acceptance
-    if (M <= a) {
-      # accepted
-
-      Y_obs <- Y[, 1] * (1 - Z) + Y[, 2] * Z  # observed outcomes
-
-      return(list(Z = Z,
-                  Y_obs = Y_obs,
-                  tries = t,
-                  M     = M,
-                  threshold = a,
-                  p_accept = p_a))
-    }
+  # run core computation
+  if (engine == "R") {
+    res <- rem_core_R(X = X,
+                      Y = Y,
+                      n_1 = n_1,
+                      a = a,
+                      max_tries = max_tries)
+  } else if (engine == "cpp") {
+    res <- rem_core_cpp(X = X,
+                        Y = Y,
+                        n1 = n_1,
+                        a = a,
+                        max_tries = max_tries)
   }
 
-  Y_obs <- Y[, 1] * (1 - Z) + Y[, 2] * Z  # observed outcomes
-
-  warning("Maximum tries exceeded without reaching threshold. Returning last assignment anyway.")
-  return(list(Z     = Z,
-              Y_obs = Y_obs,
-              tries = max_tries,
-              M     = M,
+  # return results
+  return(list(Z = res$Z,
+              Y_obs = res$Y_obs,
+              tries = res$tries,
+              M = res$M,
               threshold = a,
-              p_accept = p_a))
+              p_accept = p_a,
+              accepted = res$accepted,
+              engine = engine))
+
 }
+

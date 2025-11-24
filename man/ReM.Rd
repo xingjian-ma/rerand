@@ -11,7 +11,8 @@ ReM(
   p_accept = 0.1,
   threshold = NULL,
   max_tries = 10000,
-  seed = NULL
+  seed = NULL,
+  engine = "cpp"
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ ReM(
 \item{max_tries}{Integer scalar; maximum number of random draws before giving up, default is 10000.}
 
 \item{seed}{Integer scalar; optional random seed for reproducibility, default is NULL.}
+
+\item{engine}{Character scalar; computation engine to use, either "R" or "cpp". Default is "cpp".}
 }
 \value{
 A list containing:
@@ -38,6 +41,8 @@ A list containing:
 \item{M}{Numeric scalar; Mahalanobis dsistance of the accepted assignment.}
 \item{threshold}{Numeric scalar; threshold Mahalanobis distance used for acceptance.}
 \item{p_accept}{Numeric scalar; acceptance probability used.}
+\item{accepted}{Logical scalar; indicates whether an acceptable assignment was found within max_tries.}
+\item{engine}{Character scalar; computation engine used ("R" or "cpp").
 }
 }
 \description{
