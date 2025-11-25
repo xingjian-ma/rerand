@@ -1,5 +1,6 @@
 # internal R reference implementation
 rem_core_R <- function(X, Y, n_1, a, max_tries) {
+
   n <- nrow(X)
   K <- ncol(X)
   n_0 <- n - n_1
@@ -9,7 +10,7 @@ rem_core_R <- function(X, Y, n_1, a, max_tries) {
   Z <- rep(0, n)
   M <- Inf
   accepted <- FALSE
-  
+
   for (t in seq_len(max_tries)) {
     Z <- sample(c(rep(1, n_1), rep(0, n_0)))
     
@@ -23,7 +24,7 @@ rem_core_R <- function(X, Y, n_1, a, max_tries) {
       accepted <- TRUE
       
       Y_obs <- Y[, 1] * (1 - Z) + Y[, 2] * Z
-      
+
       return(list(Z = Z,
                   Y_obs = Y_obs,
                   M = M,

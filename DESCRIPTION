@@ -15,7 +15,8 @@ Imports:
     sandwich,
     car,
     stats,
-    Rcpp
+    Rcpp,
+    tictoc
 LinkingTo: 
     Rcpp,
     RcppArmadillo

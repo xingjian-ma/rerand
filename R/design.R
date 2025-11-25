@@ -1,5 +1,12 @@
 #' Rerandomization Design Function
 #'
+#'@description
+#' Provides high-performance tools for rerandomization in randomized
+#' experiments, including Mahalanobis-distance-based acceptance rules,
+#' efficient generation of treatment assignments, and covariate-balance
+#' diagnostics. Core algorithms are implemented in Rcpp and
+#' RcppArmadillo for computational efficiency.
+#'
 #' This function implements a rerandomization design based on Mahalanobis distance.
 #' @param X Numerical matrix; covariate matrix with n rows (units) and K columns (covariates). n >= 2 and K >= 1.
 #' @param Y Numerical matrix; potential outcomes matrix with n rows and 2 columns (Y(0), Y(1)).
@@ -19,7 +26,7 @@
 #'   \item{threshold}{Numeric scalar; threshold Mahalanobis distance used for acceptance.}
 #'   \item{p_accept}{Numeric scalar; acceptance probability used.}
 #'   \item{accepted}{Logical scalar; indicates whether an acceptable assignment was found within max_tries.}
-#'   \item{engine}{Character scalar; computation engine used ("R" or "cpp").
+#'   \item{engine}{Character scalar; computation engine used ("R" or "cpp").}
 #' }
 #'
 #' @examples

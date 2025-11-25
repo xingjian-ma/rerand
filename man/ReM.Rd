@@ -42,7 +42,7 @@ A list containing:
 \item{threshold}{Numeric scalar; threshold Mahalanobis distance used for acceptance.}
 \item{p_accept}{Numeric scalar; acceptance probability used.}
 \item{accepted}{Logical scalar; indicates whether an acceptable assignment was found within max_tries.}
-\item{engine}{Character scalar; computation engine used ("R" or "cpp").
+\item{engine}{Character scalar; computation engine used ("R" or "cpp").}
 }
 }
 \description{
