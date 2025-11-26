@@ -83,7 +83,6 @@ ReM <- function(X,
   n <- nrow(X)
   K <- ncol(X)
   n_0 <- n - n_1
-  S_inv <- solve(cov(X))
 
   # run core computation
   if (engine == "R") {

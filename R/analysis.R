@@ -89,7 +89,7 @@ est_diff_unadj <- function(Y_obs, Z, X = NULL) {
 #'
 #' @examples
 #' X <- matrix(rnorm(200), nrow = 100, ncol = 2)
-#' res <- est_lin_adjusted(Y_obs = rnorm(100), Z = rbinom(100, 1, 0.5), X = X)
+#' res <- est_lin_adj(Y_obs = rnorm(100), Z = rbinom(100, 1, 0.5), X = X)
 #'
 #' @export
 est_lin_adj <- function(Y_obs, Z, X) {

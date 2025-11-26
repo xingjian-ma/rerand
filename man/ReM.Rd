@@ -46,6 +46,12 @@ A list containing:
 }
 }
 \description{
+Provides high-performance tools for rerandomization in randomized
+experiments, including Mahalanobis-distance-based acceptance rules,
+efficient generation of treatment assignments, and covariate-balance
+diagnostics. Core algorithms are implemented in Rcpp and
+RcppArmadillo for computational efficiency.
+
 This function implements a rerandomization design based on Mahalanobis distance.
 }
 \examples{
