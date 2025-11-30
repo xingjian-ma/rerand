@@ -7,45 +7,46 @@
 
 <!-- badges: end -->
 
-The goal of rerand is to …
+The **rerand** package provides minimal tools for implementing
+rerandomization methods in randomized experiments. It includes functions
+for generating treatment assignments under complete randomization (CRE)
+and rerandomization (ReM), computing covariate-balance measures such as
+the Mahalanobis distance, and evaluating whether an assignment satisfies
+a prespecified balance criterion.
 
 ## Installation
 
 You can install the development version of rerand like so:
 
 ``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
+# install.packages("remotes")
+remotes::install_github("YOUR_USERNAME/rerand")
 ```
 
-## Example
+## Performance
 
-This is a basic example which shows you how to solve a common problem:
+The main rerandomization routines in **rerand** are implemented in C++
+via Rcpp/RcppArmadillo, which can offer substantial speedups over
+straightforward R implementations when the sample size or the number of
+rerandomization attempts is large.
 
 ``` r
-# library(ReM)
-## basic example code
+library(rerand)
+library(microbenchmark)
+
+set.seed(123)
+
+n <- 5000
+K <- 10
+X <- matrix(rnorm(n * K), ncol = K)
+Y <- rnorm(n)
+
+# Example: compare a pure R implementation with the C++ implementation
+bench <- microbenchmark(
+  R   = rerand::ReM(X = X, Y = Y, n_1 = n / 2, p_accept = 0.1, engine = "R"),
+  Cpp = rerand::ReM(X = X, Y = Y, n_1 = n / 2, p_accept = 0.1, engine = "cpp")
+  times = 50
+)
+
+bench
 ```
-
-What is special about using `README.Rmd` instead of just `README.md`?
-You can include R chunks like so:
-
-``` r
-summary(cars)
-#>      speed           dist       
-#>  Min.   : 4.0   Min.   :  2.00  
-#>  1st Qu.:12.0   1st Qu.: 26.00  
-#>  Median :15.0   Median : 36.00  
-#>  Mean   :15.4   Mean   : 42.98  
-#>  3rd Qu.:19.0   3rd Qu.: 56.00  
-#>  Max.   :25.0   Max.   :120.00
-```
-
-You’ll still need to render `README.Rmd` regularly, to keep `README.md`
-up-to-date. `devtools::build_readme()` is handy for this.
-
-You can also embed plots, for example:
-
-<img src="man/figures/README-pressure-1.png" width="100%" />
-
-In that case, don’t forget to commit and push the resulting figure
-files, so they display on GitHub and CRAN.

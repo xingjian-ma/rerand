@@ -18,37 +18,46 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of rerand is to ...
+The **rerand** package provides minimal tools for implementing
+rerandomization methods in randomized experiments. It includes functions
+for generating treatment assignments under complete randomization (CRE)
+and rerandomization (ReM), computing covariate-balance measures such as
+the Mahalanobis distance, and evaluating whether an assignment satisfies
+a prespecified balance criterion.
 
 ## Installation
 
 You can install the development version of rerand like so:
 
 ``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
+# install.packages("remotes")
+remotes::install_github("YOUR_USERNAME/rerand")
 ```
 
-## Example
+## Performance
 
-This is a basic example which shows you how to solve a common problem:
+The main rerandomization routines in **rerand** are implemented in C++
+via Rcpp/RcppArmadillo, which can offer substantial speedups over
+straightforward R implementations when the sample size or the number of
+rerandomization attempts is large.
 
-```{r example}
-# library(ReM)
-## basic example code
+```{r, eval = FALSE}
+library(rerand)
+library(microbenchmark)
+
+set.seed(123)
+
+n <- 5000
+K <- 10
+X <- matrix(rnorm(n * K), ncol = K)
+Y <- rnorm(n)
+
+# Example: compare a pure R implementation with the C++ implementation
+bench <- microbenchmark(
+  R   = rerand::ReM(X = X, Y = Y, n_1 = n / 2, p_accept = 0.1, engine = "R"),
+  Cpp = rerand::ReM(X = X, Y = Y, n_1 = n / 2, p_accept = 0.1, engine = "cpp")
+  times = 50
+)
+
+bench
 ```
-
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
-
-```{r cars}
-summary(cars)
-```
-
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this.
-
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-plot(pressure)
-```
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
