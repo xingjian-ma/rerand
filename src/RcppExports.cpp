@@ -11,24 +11,39 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// rem_core_cpp
-Rcpp::List rem_core_cpp(const arma::mat& X, const arma::mat& Y, const int n1, const double a, const int max_tries);
-RcppExport SEXP _rerand_rem_core_cpp(SEXP XSEXP, SEXP YSEXP, SEXP n1SEXP, SEXP aSEXP, SEXP max_triesSEXP) {
+// design_cpp
+Rcpp::List design_cpp(const arma::mat& X, const int n1, const double a, const int max_tries);
+RcppExport SEXP _rerand_design_cpp(SEXP XSEXP, SEXP n1SEXP, SEXP aSEXP, SEXP max_triesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type Y(YSEXP);
     Rcpp::traits::input_parameter< const int >::type n1(n1SEXP);
     Rcpp::traits::input_parameter< const double >::type a(aSEXP);
     Rcpp::traits::input_parameter< const int >::type max_tries(max_triesSEXP);
-    rcpp_result_gen = Rcpp::wrap(rem_core_cpp(X, Y, n1, a, max_tries));
+    rcpp_result_gen = Rcpp::wrap(design_cpp(X, n1, a, max_tries));
+    return rcpp_result_gen;
+END_RCPP
+}
+// get_quantile_cpp
+double get_quantile_cpp(double R2, int K, double p_a, double alpha, int n_sim);
+RcppExport SEXP _rerand_get_quantile_cpp(SEXP R2SEXP, SEXP KSEXP, SEXP p_aSEXP, SEXP alphaSEXP, SEXP n_simSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type R2(R2SEXP);
+    Rcpp::traits::input_parameter< int >::type K(KSEXP);
+    Rcpp::traits::input_parameter< double >::type p_a(p_aSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< int >::type n_sim(n_simSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_quantile_cpp(R2, K, p_a, alpha, n_sim));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_rerand_rem_core_cpp", (DL_FUNC) &_rerand_rem_core_cpp, 5},
+    {"_rerand_design_cpp", (DL_FUNC) &_rerand_design_cpp, 4},
+    {"_rerand_get_quantile_cpp", (DL_FUNC) &_rerand_get_quantile_cpp, 5},
     {NULL, NULL, 0}
 };
 
