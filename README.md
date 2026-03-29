@@ -1,21 +1,10 @@
----
-output: github_document
----
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  fig.path = "man/figures/README-",
-  out.width = "100%"
-)
-```
 
 # rerand
 
 <!-- badges: start -->
+
 <!-- badges: end -->
 
 The **rerand** package provides minimal tools for implementing
@@ -41,7 +30,7 @@ via Rcpp/RcppArmadillo, which can offer substantial speedups over
 straightforward R implementations when the sample size or the number of
 rerandomization attempts is large.
 
-```{r, eval = FALSE}
+``` r
 library(rerand)
 library(microbenchmark)
 
