@@ -117,10 +117,11 @@ calc_sample_stats <- function(Y_obs, Z, X = NULL, p_accept = 1) {
 #' @export
 est_dim <- function(Y_obs, Z, X = NULL, p_accept = 1, ...) {
 
-  if (is.null(stats)) {
+  dots <- list(...)
+  sample_stats <- dots$sample_stats
+
+  if (is.null(sample_stats)) {
     sample_stats <- calc_sample_stats(Y_obs = Y_obs, Z = Z, X = X, p_accept = p_accept)
-  } else {
-    sample_stats <- stats
   }
 
   tau_hat <- sample_stats$tau_dim
@@ -168,8 +169,11 @@ est_dim <- function(Y_obs, Z, X = NULL, p_accept = 1, ...) {
 #' @export
 est_lin <- function(Y_obs, Z, X, ...) {
 
-  if (is.null(stats)) {
-    stats <- calc_sample_stats(Y_obs = Y_obs, Z = Z, X = X, p_accept = 1)
+  dots <- list(...)
+  sample_stats <- dots$sample_stats
+
+  if (is.null(sample_stats)) {
+    sample_stats <- calc_sample_stats(Y_obs = Y_obs, Z = Z, X = X, p_accept = 1)
   }
 
   X_means <- colMeans(X)
@@ -207,59 +211,69 @@ est_lin <- function(Y_obs, Z, X, ...) {
 #'
 #' @param Y_full Numeric matrix; n x 2 potential outcomes matrix with columns Y(0), Y(1).
 #' @param X Numeric matrix; n x K covariate matrix. Optional. Default is NULL.
-#' @param r1 Numeric scalar; treatment assignment ratio.
-#' @param r0 Numeric scalar; control assignment ratio.
+#' @param n1 Integer scalar; number of treated units. Required to compute sampling variances.
 #' @param p_accept Numeric scalar; rerandomization acceptance probability.
 #'
 #' @return A list containing:
 #' \describe{
-#' \item{V_tt_true}{Numeric scalar; true sampling variance.}
-#' \item{R2_true}{Numeric scalar; true R-squared (proportion of variance explained by covariates).}
-#' \item{tau_true}{Numeric scalar; true ATE from potential outcomes.}
-#' \item{se_true}{Numeric scalar; true standard error under rerandomization or CRE.}
+#' \item{tau_true}{Numeric scalar; true ATE from potential outcomes. Can be 0.}
+#' \item{R2_true}{Numeric scalar; true R-squared. NULL only when X is NULL.}
+#' \item{V_tt_true}{Numeric scalar; true sampling variance. Can be 0.}
+#' \item{se_cre_dim}{Numeric scalar; CRE standard error for difference-in-means. Can be 0.}
+#' \item{se_rem_dim}{Numeric scalar; rerandomization standard error for difference-in-means. NULL when X is NULL.}
+#' \item{se_cre_lin}{Numeric scalar; CRE standard error for Lin estimator. NULL when X is NULL.}
+#' \item{se_rem_lin}{Numeric scalar; rerandomization standard error for Lin estimator. NULL when X is NULL.}
 #' }
 #'
 #' @keywords internal
 #' @noRd
-calc_population_stats <- function(Y_full, X = NULL, r1, r0, p_accept = 1) {
+calc_population_stats <- function(Y_full, X = NULL, n1, p_accept = 1) {
 
   Y0 <- Y_full[, 1]
   Y1 <- Y_full[, 2]
   tau <- Y1 - Y0
   tau_true <- mean(tau)
   n <- length(Y0)
+  n0 <- n - n1
+  r1 <- n1 / n
+  r0 <- n0 / n
 
   S_Y0 <- stats::var(Y0)
   S_Y1 <- stats::var(Y1)
   S_tau <- stats::var(tau)
 
   V_tt_true <- S_Y1 / r1 + S_Y0 / r0 - S_tau
+  se_cre_dim <- sqrt(V_tt_true) / sqrt(n)
+  R2_true <- NULL
+  se_rem_dim <- NULL
+  se_cre_lin <- NULL
+  se_rem_lin <- NULL
 
-  if (is.null(X)) {
-    R2_true <- NULL
-    se_true <- sqrt(V_tt_true) / sqrt(n)
-  } else {
+  if (!is.null(X)) {
     S_Y0_given_X <- stats::var(fitted(stats::lm(Y0 ~ X)))
     S_Y1_given_X <- stats::var(fitted(stats::lm(Y1 ~ X)))
     S_tau_given_X <- stats::var(fitted(stats::lm(tau ~ X)))
 
     R2_true <- (S_Y0_given_X / r0 + S_Y1_given_X / r1 - S_tau_given_X) / V_tt_true
 
-    if (method == "dim") {
-      K <- ncol(X)
-      a <- stats::qchisq(p = p_accept, df = K)
-      v_K_a <- stats::pchisq(q = a, df = K + 2) / p_accept
-      se_true <- sqrt((1 - (1 - v_K_a) * R2_true) * V_tt_true) / sqrt(n)
-    } else {
-      se_true <- sqrt((1 - R2_true) * V_tt_true) / sqrt(n)
-    }
+    K <- ncol(X)
+    a <- stats::qchisq(p = p_accept, df = K)
+    v_K_a <- stats::pchisq(q = a, df = K + 2) / p_accept
+
+    se_rem_dim <- sqrt((1 - (1 - v_K_a) * R2_true) * V_tt_true) / sqrt(n)
+    se_cre_lin <- sqrt((1 - R2_true) * V_tt_true) / sqrt(n)
+    se_rem_lin <- se_cre_lin
+
   }
 
   list(
-    V_tt_true = as.numeric(V_tt_true),
-    R2_true = if (is.null(R2_true)) NULL else as.numeric(R2_true),
     tau_true = as.numeric(tau_true),
-    se_true = as.numeric(se_true)
+    R2_true = if (is.null(R2_true)) NULL else as.numeric(R2_true),
+    V_tt_true = as.numeric(V_tt_true),
+    se_cre_dim = as.numeric(se_cre_dim),
+    se_rem_dim = if (is.null(se_rem_dim)) NULL else as.numeric(se_rem_dim),
+    se_cre_lin = if (is.null(se_cre_lin)) NULL else as.numeric(se_cre_lin),
+    se_rem_lin = if (is.null(se_rem_lin)) NULL else as.numeric(se_rem_lin)
   )
 }
 

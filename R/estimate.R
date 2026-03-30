@@ -11,7 +11,16 @@
 #' @param theoretical Logical scalar; If TRUE, calculates theoretical variance using Y_full.
 #' @param Y_full Numeric matrix; potential outcomes matrix with n rows and 2 columns (Y(0), Y(1)). Required if theoretical = TRUE.
 #'
-#' @return A list of class "rerand_estimate" containing estimates, standard errors, and diagnostic statistics.
+#' @return A list containing:
+#' \describe{
+#' \item{tau_hat}{Numeric scalar; point estimate of ATE.}
+#' \item{se_neyman}{Numeric scalar; Neyman SE for method = "dim"; otherwise NULL.}
+#' \item{se_ding}{Numeric scalar; Ding SE for method = "dim" when available; otherwise NULL.}
+#' \item{se_ehw}{Numeric scalar; HC2 SE for method = "lin"; otherwise NULL.}
+#' \item{fit}{lm object; fitted Lin model when method = "lin"; otherwise NULL.}
+#' \item{sample_stats}{List; sample-level diagnostics from `calc_sample_stats`.}
+#' \item{pop_stats}{List; population-level diagnostics from `calc_population_stats` when `theoretical = TRUE`; otherwise NULL.}
+#' }
 #' @importFrom stats lm var cov predict model.matrix
 #' @importFrom car hccm
 #' @importFrom checkmate assert_numeric assert_matrix assert_subset assert_choice
@@ -31,6 +40,7 @@ rerand_estimate <- function(Y_obs, Z, X = NULL,
   checkmate::assert_numeric(Z, len = n, any.missing = FALSE)
   checkmate::assert_subset(unique(Z), choices = c(0, 1))
   checkmate::assert_number(p_a, lower = 0, upper = 1)
+  checkmate::assert_true(p_a > 0)
 
   # Check X
   if (!is.null(X)) {
@@ -46,17 +56,15 @@ rerand_estimate <- function(Y_obs, Z, X = NULL,
 
   # --- 2. Sample Statistics Calculation ---
   sample_stats <- calc_sample_stats(Y_obs = Y_obs, Z = Z, X = X, p_accept = p_a)
-  r1 <- sample_stats$r1
-  r0 <- sample_stats$r0
 
   if (method == "dim") {
-    dim_res <- est_dim(Y_obs = Y_obs, Z = Z, X = X, p_accept = p_a, stats = sample_stats)
+    dim_res <- est_dim(Y_obs = Y_obs, Z = Z, X = X, p_accept = p_a, sample_stats = sample_stats)
     tau_hat <- dim_res$tau_hat
     se_neyman <- dim_res$se_neyman
     se_ding <- dim_res$se_ding
 
   } else {
-    lin_res <- est_lin(Y_obs = Y_obs, Z = Z, X = X, stats = sample_stats)
+    lin_res <- est_lin(Y_obs = Y_obs, Z = Z, X = X, sample_stats = sample_stats)
     tau_hat <- lin_res$tau_hat
     se_ehw <- lin_res$se_ehw
     fit <- lin_res$fit
@@ -64,39 +72,21 @@ rerand_estimate <- function(Y_obs, Z, X = NULL,
 
   # --- 4. Theoretical Variance (Optional) ---
 
-  # --- 4. Theoretical Variance (Optional) ---
-
   if (theoretical) {
     pop_stats <- calc_population_stats(
-      Y_full = Y_full, X = X, r1 = r1, r0 = r0, 
-      p_accept = p_a, method = method
+      Y_full = Y_full, X = X, n1 = sample_stats$n1, p_accept = p_a
     )
-    V_tt_true <- pop_stats$V_tt_true
-    R2_true <- pop_stats$R2_true
-    tau_true <- pop_stats$tau_true
-    se_true <- pop_stats$se_true
   }
 
   # --- 5. Output Construction ---
   res <- list(
     tau_hat = as.numeric(tau_hat),
-    tau_true = if (theoretical) as.numeric(tau_true) else NULL,
     se_neyman = if (method == "dim") as.numeric(se_neyman) else NULL,
     se_ding = if (method == "dim" && !is.null(se_ding)) as.numeric(se_ding) else NULL,
     se_ehw = if (method == "lin") as.numeric(se_ehw) else NULL,
-    se_true = if (theoretical) as.numeric(se_true) else NULL,
-
-    stats = list(
-      n = n,
-      method = method,
-      p_accept = p_a,
-      R2_hat = if (!is.null(sample_stats$R2_hat)) as.numeric(sample_stats$R2_hat) else NULL,
-      R2_true = if (theoretical && !is.null(R2_true)) as.numeric(R2_true) else NULL,
-      V_tt_hat_1 = as.numeric(sample_stats$V_tt_hat_1),
-      V_tt_hat_2 = if (!is.null(sample_stats$V_tt_hat_2)) as.numeric(sample_stats$V_tt_hat_2) else NULL,
-      V_tt_true = if (theoretical) as.numeric(V_tt_true) else NULL,
-      fit = if (method == "lin") fit else NULL
-    )
+    fit = if (method == "lin") fit else NULL,
+    sample_stats = sample_stats,
+    pop_stats = if (theoretical) pop_stats else NULL
   )
 
   return(res)
