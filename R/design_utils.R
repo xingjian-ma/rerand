@@ -6,6 +6,9 @@
 #' @param max_tries Integer maximum number of draws.
 #'
 #' @return A list with accepted assignment and diagnostics.
+#' @references
+#' Morgan, K. L., and Rubin, D. B. (2012). Rerandomization to improve covariate
+#' balance in experiments. The Annals of Statistics, 40(2), 1263-1282.
 #' @keywords internal
 #' @export
 design_R <- function(X, n1, a, max_tries) {

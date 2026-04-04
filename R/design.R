@@ -27,6 +27,10 @@
 #'   \item{engine}{Character scalar; computation engine used ("R" or "cpp").}
 #' }
 #'
+#' @references
+#' Morgan, K. L., and Rubin, D. B. (2012). Rerandomization to improve covariate
+#' balance in experiments. The Annals of Statistics, 40(2), 1263-1282.
+#'
 #' @examples
 #' set.seed(123)
 #' X <- matrix(rnorm(100 * 3), nrow = 100, ncol = 3)  # 100 units, 3 covariates

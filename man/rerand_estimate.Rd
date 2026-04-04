@@ -5,13 +5,13 @@
 \title{Rerandomization Estimator}
 \usage{
 rerand_estimate(
-  Y_obs = NULL,
+  Y_obs,
   Z,
   X = NULL,
   method = c("dim", "lin"),
   p_accept = 1,
   theoretical = FALSE,
-  Y = NULL
+  Y_full = NULL
 )
 }
 \arguments{
@@ -25,14 +25,34 @@ rerand_estimate(
 
 \item{p_accept}{Numeric scalar; Probability of acceptance (default 1, representing CRE). Used to calculate variance reduction factor.}
 
-\item{theoretical}{Logical scalar; If TRUE, calculates theoretical variance using Y0 and Y1.}
+\item{theoretical}{Logical scalar; If TRUE, calculates theoretical variance using Y_full.}
 
-\item{Y}{Numerical matrix; potential outcomes matrix with n rows and 2 columns (Y(0), Y(1)). Required if theoretical = TRUE.}
+\item{Y_full}{Numeric matrix; potential outcomes matrix with n rows and 2 columns (Y(0), Y(1)). Required if theoretical = TRUE.}
 }
 \value{
-A list of class "rerand_estimate" containing estimates, standard errors, and diagnostic statistics.
+A list containing:
+\describe{
+\item{tau_hat}{Numeric scalar; point estimate of ATE.}
+\item{se_neyman}{Numeric scalar; Neyman SE for method = "dim"; otherwise NULL.}
+\item{se_ding}{Numeric scalar; Ding SE for method = "dim" when available; otherwise NULL.}
+\item{se_ehw}{Numeric scalar; HC2 SE for method = "lin"; otherwise NULL.}
+\item{fit}{lm object; fitted Lin model when method = "lin"; otherwise NULL.}
+\item{sample_stats}{List; sample-level diagnostics from \code{calc_sample_stats}.}
+\item{pop_stats}{List; population-level diagnostics from \code{calc_population_stats} when \code{theoretical = TRUE}; otherwise NULL.}
+}
 }
 \description{
 Estimates the ATE using either Difference-in-Means or Lin's (2013) Regression Adjustment.
 Supports both conservative estimation (using observed data) and theoretical variance calculation (using potential outcomes).
+}
+\references{
+Lin, W. (2013). Agnostic notes on regression adjustments to experimental data:
+Reexamining Freedman's critique. The Annals of Applied Statistics, 7(1), 295-318.
+
+Morgan, K. L., and Rubin, D. B. (2012). Rerandomization to improve covariate
+balance in experiments. The Annals of Statistics, 40(2), 1263-1282.
+
+Li, X., Ding, P., and Rubin, D. B. (2018). Asymptotic theory of rerandomization
+in treatment-control experiments. Proceedings of the National Academy of Sciences,
+115(37), 9157-9162.
 }

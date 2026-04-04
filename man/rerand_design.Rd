@@ -6,8 +6,7 @@
 \usage{
 rerand_design(
   X,
-  Y,
-  n_1,
+  n1,
   p_accept = 0.1,
   threshold = NULL,
   max_tries = 10000,
@@ -18,9 +17,7 @@ rerand_design(
 \arguments{
 \item{X}{Numerical matrix; covariate matrix with n rows (units) and K columns (covariates). n >= 2 and K >= 1.}
 
-\item{Y}{Numerical matrix; potential outcomes matrix with n rows and 2 columns (Y(0), Y(1)).}
-
-\item{n_1}{Integer scalar; number of units to assign to treatment. n_1 > 0 and n_1 < nrow(X).}
+\item{n1}{Integer scalar; number of units to assign to treatment. n1 > 0 and n1 < nrow(X).}
 
 \item{p_accept}{Numeric scalar; acceptance probability in (0, 1], default is 0.1.}
 
@@ -36,7 +33,6 @@ rerand_design(
 A list containing:
 \describe{
 \item{Z}{Numeric vector; accepted treatment assignment with length n and values 0 (control) or 1 (treatment).}
-\item{Y_obs}{Numeric vector; observed outcomes corresponding to the accepted assignment.}
 \item{tries}{Integer scalar; number of random draws made until acceptance.}
 \item{M}{Numeric scalar; Mahalanobis dsistance of the accepted assignment.}
 \item{threshold}{Numeric scalar; threshold Mahalanobis distance used for acceptance.}
@@ -57,7 +53,10 @@ This function implements a rerandomization design based on Mahalanobis distance.
 \examples{
 set.seed(123)
 X <- matrix(rnorm(100 * 3), nrow = 100, ncol = 3)  # 100 units, 3 covariates
-Y <- matrix(rnorm(100 * 2), nrow = 100, ncol = 2)  # potential outcomes
-result <- rerand_design(X, Y, n_1 = 50, p_accept = 0.1, max_tries = 10000)
+result <- rerand_design(X, n1 = 50, p_accept = 0.1, max_tries = 10000)
 
+}
+\references{
+Morgan, K. L., and Rubin, D. B. (2012). Rerandomization to improve covariate
+balance in experiments. The Annals of Statistics, 40(2), 1263-1282.
 }

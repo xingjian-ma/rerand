@@ -25,4 +25,9 @@ Numeric scalar; the estimated quantile of mixed Gaussian distribution.
 \description{
 This function simulates the distribution of the estimator under rerandomization to compute quantiles for confidence intervals. It accounts for the variance reduction due to rerandomization and the correlation structure of covariates.
 }
+\references{
+Li, X., Ding, P., and Rubin, D. B. (2018). Asymptotic theory of rerandomization
+in treatment-control experiments. Proceedings of the National Academy of Sciences,
+115(37), 9157-9162.
+}
 \keyword{internal}

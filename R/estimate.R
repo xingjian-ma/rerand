@@ -21,6 +21,16 @@
 #' \item{sample_stats}{List; sample-level diagnostics from `calc_sample_stats`.}
 #' \item{pop_stats}{List; population-level diagnostics from `calc_population_stats` when `theoretical = TRUE`; otherwise NULL.}
 #' }
+#' @references
+#' Lin, W. (2013). Agnostic notes on regression adjustments to experimental data:
+#' Reexamining Freedman's critique. The Annals of Applied Statistics, 7(1), 295-318.
+#'
+#' Morgan, K. L., and Rubin, D. B. (2012). Rerandomization to improve covariate
+#' balance in experiments. The Annals of Statistics, 40(2), 1263-1282.
+#'
+#' Li, X., Ding, P., and Rubin, D. B. (2018). Asymptotic theory of rerandomization
+#' in treatment-control experiments. Proceedings of the National Academy of Sciences,
+#' 115(37), 9157-9162.
 #' @importFrom stats lm var cov predict model.matrix
 #' @importFrom car hccm
 #' @importFrom checkmate assert_numeric assert_matrix assert_subset assert_choice

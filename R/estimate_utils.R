@@ -16,6 +16,13 @@
 #' \item{V_tt_hat_1}{Numeric scalar; baseline conservative variance component.}
 #' \item{V_tt_hat_2}{Numeric scalar; adjusted conservative variance component, if X is provided.}
 #' }
+#' @references
+#' Morgan, K. L., and Rubin, D. B. (2012). Rerandomization to improve covariate
+#' balance in experiments. The Annals of Statistics, 40(2), 1263-1282.
+#'
+#' Li, X., Ding, P., and Rubin, D. B. (2018). Asymptotic theory of rerandomization
+#' in treatment-control experiments. Proceedings of the National Academy of Sciences,
+#' 115(37), 9157-9162.
 #'
 #' @examples
 #' res <- est_dim(Y_obs = rnorm(100), Z = rbinom(100, 1, 0.5), p_accept = 1)
@@ -109,6 +116,13 @@ calc_sample_stats <- function(Y_obs, Z, X = NULL, p_accept = 1) {
 #' \item{V_tt_hat_1}{Numeric scalar; baseline conservative variance component.}
 #' \item{V_tt_hat_2}{Numeric scalar; adjusted conservative variance component, if X is provided.}
 #' }
+#' @references
+#' Morgan, K. L., and Rubin, D. B. (2012). Rerandomization to improve covariate
+#' balance in experiments. The Annals of Statistics, 40(2), 1263-1282.
+#'
+#' Li, X., Ding, P., and Rubin, D. B. (2018). Asymptotic theory of rerandomization
+#' in treatment-control experiments. Proceedings of the National Academy of Sciences,
+#' 115(37), 9157-9162.
 #'
 #' @examples
 #' res <- est_dim(Y_obs = rnorm(100), Z = rbinom(100, 1, 0.5), p_accept = 1)
@@ -160,6 +174,9 @@ est_dim <- function(Y_obs, Z, X = NULL, p_accept = 1, ...) {
 #' \item{se_ehw}{Numeric scalar; heteroskedasticity-consistent standard error.}
 #' \item{fit}{lm object; fitted linear model.}
 #' }
+#' @references
+#' Lin, W. (2013). Agnostic notes on regression adjustments to experimental data:
+#' Reexamining Freedman's critique. The Annals of Applied Statistics, 7(1), 295-318.
 #'
 #' @examples
 #' X <- matrix(rnorm(200), nrow = 100, ncol = 2)
@@ -290,6 +307,10 @@ calc_population_stats <- function(Y_full, X = NULL, n1, p_accept = 1) {
 #' @param engine Character scalar; computation engine to use, either "R" or "cpp". Default is "cpp".
 #'
 #' @return Numeric scalar; the estimated quantile of mixed Gaussian distribution.
+#' @references
+#' Li, X., Ding, P., and Rubin, D. B. (2018). Asymptotic theory of rerandomization
+#' in treatment-control experiments. Proceedings of the National Academy of Sciences,
+#' 115(37), 9157-9162.
 #' @keywords internal
 #' @export
 get_quantile <- function(R2, K, p_accept, alpha = 0.975, n_sim = 1e5, engine = "cpp") {
