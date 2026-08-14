@@ -1,21 +1,24 @@
 Package: rerand
-Title: What the Package Does (One Line, Title Case)
+Title: Rerandomization Designs and Estimators
 Version: 0.0.0.9000
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Authors@R:
+    person("Xingjian", "Ma", email = "xingjian.ma@uconn.edu", role = c("aut", "cre"))
+Author: Xingjian Ma [aut, cre]
+Maintainer: Xingjian Ma <xingjian.ma@uconn.edu>
+Description: Tools for rerandomization designs, treatment effect estimators,
+    and theoretical variance calculations in randomized experiments.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports: 
-    checkmate,
-    lmtest,
     MASS,
     sandwich,
-    car,
     stats,
-    Rcpp,
+    Rcpp
 LinkingTo: 
     Rcpp,
     RcppArmadillo
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
