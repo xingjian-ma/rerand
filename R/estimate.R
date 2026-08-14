@@ -1,93 +1,138 @@
-#' Rerandomization Estimator
+#' Estimate an average treatment effect under rerandomization
 #'
-#' Estimates the ATE using either Difference-in-Means or Lin's (2013) Regression Adjustment.
-#' Supports both conservative estimation (using observed data) and theoretical variance calculation (using potential outcomes).
-#'
-#' @param Y_obs Numeric vector; observed outcomes with length n.
-#' @param Z Numeric vector; treatment assignment (0 = control, 1 = treatment).
-#' @param X Numeric matrix; n x K covariate matrix. Required for Lin method and R2 estimation.
-#' @param method Character scalar; "dim" for Difference-in-Means, "lin" for Lin's Regression Adjustment.
-#' @param p_accept Numeric scalar; Probability of acceptance (default 1, representing CRE). Used to calculate variance reduction factor.
-#' @param theoretical Logical scalar; If TRUE, calculates theoretical variance using Y_full.
-#' @param Y_full Numeric matrix; potential outcomes matrix with n rows and 2 columns (Y(0), Y(1)). Required if theoretical = TRUE.
-#'
-#' @return A list containing:
-#' \describe{
-#' \item{tau_hat}{Numeric scalar; point estimate of ATE.}
-#' \item{se_neyman}{Numeric scalar; Neyman SE for method = "dim"; otherwise NULL.}
-#' \item{se_ding}{Numeric scalar; Ding SE for method = "dim" when available; otherwise NULL.}
-#' \item{se_ehw}{Numeric scalar; HC2 SE for method = "lin"; otherwise NULL.}
-#' \item{fit}{lm object; fitted Lin model when method = "lin"; otherwise NULL.}
-#' \item{sample_stats}{List; sample-level diagnostics from `calc_sample_stats`.}
-#' \item{pop_stats}{List; population-level diagnostics from `calc_population_stats` when `theoretical = TRUE`; otherwise NULL.}
-#' }
-#' @importFrom stats lm var cov predict model.matrix
-#' @importFrom car hccm
-#' @importFrom checkmate assert_numeric assert_matrix assert_subset assert_choice
+#' @param Y_obs Observed outcomes.
+#' @param Z Binary treatment assignment.
+#' @param X Numeric covariate matrix. Required for `method = "lin"` and for
+#'   rerandomization adjustment.
+#' @param method Either `"dim"` for difference-in-means or `"lin"` for Lin's
+#'   fully interacted regression adjustment.
+#' @param accept_prob Acceptance probability. Mutually exclusive with
+#'   `threshold`.
+#' @param threshold Direct Mahalanobis threshold. Mutually exclusive with
+#'   `accept_prob`.
+#' @param theoretical Whether to calculate population-level quantities.
+#' @param Y_full Potential outcomes matrix with columns Y(0) and Y(1).
+#' @param p_accept Deprecated alias for `accept_prob`.
+#' @return An object of class `rerand_estimate_result`.
 #' @export
-rerand.estimate <- function(Y_obs, Z, X = NULL,
+rerand_estimate <- function(Y_obs, Z, X = NULL,
                             method = c("dim", "lin"),
-                            p_accept = 1,
-                            theoretical = FALSE,
-                            Y_full = NULL) {
-
-
-  # --- 1. Input Validation ---
+                            accept_prob = NULL, threshold = NULL,
+                            theoretical = FALSE, Y_full = NULL,
+                            p_accept = NULL) {
+  if (!is.null(p_accept)) {
+    if (!is.null(accept_prob)) {
+      stop("Use only one of accept_prob and p_accept.", call. = FALSE)
+    }
+    warning("p_accept is deprecated; use accept_prob instead.", call. = FALSE)
+    accept_prob <- p_accept
+  }
   method <- match.arg(method)
-  n <- length(Z)
-  p_a <- p_accept
+  inputs <- .rerand_validate_estimate_inputs(
+    Y_obs = Y_obs,
+    Z = Z,
+    X = X,
+    method = method,
+    theoretical = theoretical,
+    Y_full = Y_full
+  )
 
-  checkmate::assert_numeric(Z, len = n, any.missing = FALSE)
-  checkmate::assert_subset(unique(Z), choices = c(0, 1))
-  checkmate::assert_number(p_a, lower = 0, upper = 1)
-  checkmate::assert_true(p_a > 0)
-
-  # Check X
-  if (!is.null(X)) {
-    checkmate::assert_matrix(X, mode = "numeric", nrows = n, any.missing = FALSE)
-  } else if (method == "lin" || p_a < 1) {
-    stop("Covariate matrix X is required for method 'lin' or when p_a < 1 (to estimate R2).")
-  }
-
-  checkmate::assert_numeric(Y_obs, len = n, any.missing = FALSE)
-  if (theoretical) {
-    checkmate::assert_matrix(Y_full, mode = "numeric", nrows = n, ncols = 2, any.missing = FALSE)
-  }
-
-  # --- 2. Sample Statistics Calculation ---
-  sample_stats <- calc_sample_stats(Y_obs = Y_obs, Z = Z, X = X, p_accept = p_a)
-
-  if (method == "dim") {
-    dim_res <- estimate.dim(Y_obs = Y_obs, Z = Z, X = X, p_accept = p_a, sample_stats = sample_stats)
-    tau_hat <- dim_res$tau_hat
-    se_neyman <- dim_res$se_neyman
-    se_ding <- dim_res$se_ding
-
+  if (is.null(X)) {
+    if (!is.null(threshold) || is.null(accept_prob) || accept_prob != 1) {
+      stop("Without X, accept_prob must be explicitly set to 1.", call. = FALSE)
+    }
+    criterion <- list(
+      type = "probability",
+      accept_prob = 1,
+      threshold = Inf,
+      K = 0L,
+      acceptance_mass = 1,
+      v_K_a = 1
+    )
   } else {
-    lin_res <- estimate.lin(Y_obs = Y_obs, Z = Z, X = X, sample_stats = sample_stats)
-    tau_hat <- lin_res$tau_hat
-    se_ehw <- lin_res$se_ehw
-    fit <- lin_res$fit
-  }
-
-  # --- 4. Theoretical Variance (Optional) ---
-
-  if (theoretical) {
-    pop_stats <- calc_population_stats(
-      Y_full = Y_full, X = X, n1 = sample_stats$n1, p_accept = p_a
+    covariance <- .rerand_covariance(X)
+    criterion <- .rerand_resolve_criterion(
+      accept_prob = accept_prob,
+      threshold = threshold,
+      K = covariance$rank,
+      require_criterion = TRUE
     )
   }
 
-  # --- 5. Output Construction ---
-  res <- list(
-    tau_hat = as.numeric(tau_hat),
-    se_neyman = if (method == "dim") as.numeric(se_neyman) else NULL,
-    se_ding = if (method == "dim" && !is.null(se_ding)) as.numeric(se_ding) else NULL,
-    se_ehw = if (method == "lin") as.numeric(se_ehw) else NULL,
-    fit = if (method == "lin") fit else NULL,
-    sample_stats = sample_stats,
-    pop_stats = if (theoretical) pop_stats else NULL
+  sample_stats <- .calc_sample_stats(
+    Y_obs = inputs$Y_obs,
+    Z = inputs$assignment$Z,
+    X = inputs$X,
+    criterion = criterion
   )
 
-  return(res)
+  estimate <- if (method == "dim") {
+    .estimate_dim(sample_stats)
+  } else {
+    .estimate_lin(inputs$Y_obs, inputs$assignment$Z, inputs$X)
+  }
+
+  population_stats <- if (theoretical) {
+    .calc_population_stats(
+      Y_full = inputs$Y_full,
+      X = inputs$X,
+      n_treat = inputs$assignment$n_treat,
+      criterion = criterion
+    )
+  } else {
+    NULL
+  }
+
+  result <- c(
+    list(
+      tau_hat = as.numeric(estimate$tau_hat),
+      method = method,
+      se_neyman = if (method == "dim") estimate$se_neyman else NULL,
+      se_ding = if (method == "dim") estimate$se_ding else NULL,
+      se_ehw = if (method == "lin") estimate$se_ehw else NULL,
+      fit = if (method == "lin") estimate$fit else NULL
+    ),
+    list(
+      sample_stats = sample_stats,
+      pop_stats = population_stats,
+      criterion_type = criterion$type,
+      accept_prob = criterion$accept_prob,
+      threshold = criterion$threshold
+    )
+  )
+  class(result) <- c("rerand_estimate_result", "list")
+  result
+}
+
+#' @export
+print.rerand_estimate_result <- function(x, ...) {
+  cat("Rerandomization estimate\n")
+  cat("  method:        ", x$method, "\n", sep = "")
+  cat("  estimate:      ", format(x$tau_hat), "\n", sep = "")
+  if (x$method == "dim") {
+    cat("  Neyman SE:     ", format(x$se_neyman), "\n", sep = "")
+    if (!is.null(x$se_ding)) {
+      cat("  Ding SE:       ", format(x$se_ding), "\n", sep = "")
+    }
+  } else {
+    cat("  HC2 SE:        ", format(x$se_ehw), "\n", sep = "")
+  }
+  cat("  criterion:     ", x$criterion_type, "\n", sep = "")
+  invisible(x)
+}
+
+#' @export
+summary.rerand_estimate_result <- function(object, ...) {
+  summary <- object[c(
+    "tau_hat", "method", "se_neyman", "se_ding", "se_ehw",
+    "criterion_type", "accept_prob", "threshold"
+  )]
+  class(summary) <- c("summary.rerand_estimate_result", "list")
+  summary
+}
+
+#' @export
+print.summary.rerand_estimate_result <- function(x, ...) {
+  print.rerand_estimate_result(x, ...)
+  invisible(x)
 }
