@@ -1,101 +1,113 @@
-#' Rerandomization Design Function
+#' Generate a rerandomized treatment assignment
 #'
-#'@description
-#' Provides high-performance tools for rerandomization in randomized
-#' experiments, including Mahalanobis-distance-based acceptance rules,
-#' efficient generation of treatment assignments, and covariate-balance
-#' diagnostics. Core algorithms are implemented in Rcpp and
-#' RcppArmadillo for computational efficiency.
+#' @description
+#' Generates an assignment with exactly `n_treat` treated units and accepts it
+#' when its Mahalanobis distance is below a prespecified criterion.
 #'
-#' This function implements a rerandomization design based on Mahalanobis distance.
-#' @param X Numerical matrix; covariate matrix with n rows (units) and K columns (covariates). n >= 2 and K >= 1.
-#' @param n1 Integer scalar; number of units to assign to treatment. n1 > 0 and n1 < nrow(X).
-#' @param p_accept Numeric scalar; acceptance probability in (0, 1], default is 0.1.
-#' @param threshold Numeric scalar; threshold for Mahalanobis distance. If NULL, it is computed from p_accept. Default is NULL. If provided, p_accept will be ignored.
-#' @param max_tries Integer scalar; maximum number of random draws before giving up, default is 10000.
-#' @param seed Integer scalar; optional random seed for reproducibility, default is NULL.
-#' @param engine Character scalar; computation engine to use, either "R" or "cpp". Default is "cpp".
-#'
-#' @return A list containing:
-#' \describe{
-#'   \item{Z}{Numeric vector; accepted treatment assignment with length n and values 0 (control) or 1 (treatment).}
-#'   \item{tries}{Integer scalar; number of random draws made until acceptance.}
-#'   \item{M}{Numeric scalar; Mahalanobis dsistance of the accepted assignment.}
-#'   \item{threshold}{Numeric scalar; threshold Mahalanobis distance used for acceptance.}
-
-#'   \item{p_accept}{Numeric scalar; acceptance probability used.}
-#'   \item{accepted}{Logical scalar; indicates whether an acceptable assignment was found within max_tries.}
-#'   \item{engine}{Character scalar; computation engine used ("R" or "cpp").}
-#' }
-#'
-#' @examples
-#' set.seed(123)
-#' X <- matrix(rnorm(100 * 3), nrow = 100, ncol = 3)  # 100 units, 3 covariates
-#' result <- rerand.design(X, n1 = 50, p_accept = 0.1, max_tries = 10000)
-#'
+#' @param X Numeric covariate matrix.
+#' @param n_treat Number of treated units.
+#' @param accept_prob Target acceptance probability used to derive the
+#'   Mahalanobis threshold. Mutually exclusive with `threshold`.
+#' @param threshold Direct Mahalanobis threshold. Mutually exclusive with
+#'   `accept_prob`.
+#' @param max_tries Maximum number of assignments to draw.
+#' @param seed Optional integer seed.
+#' @param engine Either `"cpp"` or `"R"`.
+#' @param p_accept Deprecated alias for `accept_prob`.
+#' @return An object of class `rerand_design_result`.
 #' @export
-rerand.design <- function(X,
-                n1,
-                p_accept = 0.1,
-                threshold = NULL,
-                max_tries = 10000,
-                seed = NULL,
-                engine = "cpp") {
-
-  # Check inputs
-  checkmate::assert_matrix(X, mode = "numeric", min.rows = 2, min.cols = 1, any.missing = FALSE)
-  checkmate::assert_count(n1)
-
-
-  p_a <- p_accept
-  a <- threshold
-
-  checkmate::assert_numeric(p_a, lower = 0, upper = 1, len = 1, any.missing = FALSE)
-  checkmate::assert_true(p_a > 0)
-
-
-  if (!is.null(a)){
-    checkmate::assert_numeric(a, lower = 0, len = 1, any.missing = FALSE)
-    checkmate::assert_true(a > 0)
-  }else{
-    # compute threshold a from p_a
-    K <- ncol(X)
-    a <- stats::qchisq(p = p_a, df = K)
+rerand_design <- function(X, n_treat, accept_prob = NULL, threshold = NULL,
+                          max_tries = 10000L, seed = NULL,
+                          engine = c("cpp", "R"), p_accept = NULL) {
+  if (!is.null(p_accept)) {
+    if (!is.null(accept_prob)) {
+      stop("Use only one of accept_prob and p_accept.", call. = FALSE)
+    }
+    warning("p_accept is deprecated; use accept_prob instead.", call. = FALSE)
+    accept_prob <- p_accept
+  }
+  inputs <- .rerand_validate_design_inputs(X, n_treat, max_tries)
+  engine <- .rerand_validate_engine(match.arg(engine))
+  if (!is.null(seed)) {
+    if (length(seed) != 1L || !is.numeric(seed) || !is.finite(seed) ||
+        seed != as.integer(seed)) {
+      stop("seed must be one finite integer or NULL.", call. = FALSE)
+    }
+    seed <- as.integer(seed)
   }
 
-  checkmate::assert_count(max_tries)
-  checkmate::assert_count(seed, null.ok = TRUE)
+  covariance <- .rerand_covariance(inputs$X)
+  criterion <- .rerand_resolve_criterion(
+    accept_prob = accept_prob,
+    threshold = threshold,
+    K = covariance$rank,
+    require_criterion = TRUE
+  )
 
-  n1 <- as.integer(n1)
-  max_tries <- as.integer(max_tries)
-
-  checkmate::assert_integer(n1, lower = 1, upper = nrow(X) - 1, len = 1, any.missing = FALSE)
-  checkmate::assert_integer(max_tries, lower = 1, len = 1, any.missing = FALSE)
-
-  # Set parameters
-  if (!is.null(seed)) set.seed(seed)
-
-  # run core computation
-  if (engine == "R") {
-    res <- design.R(X = X,
-                      n1 = n1,
-                      a = a,
-                      max_tries = max_tries)
-  } else if (engine == "cpp") {
-    res <- design_cpp(X = X,
-                        n1 = n1,
-                        a = a,
-                        max_tries = max_tries)
+  if (!is.null(seed)) {
+    set.seed(seed)
   }
 
-  # return results
-  return(list(Z = res$Z,
-              tries = res$tries,
-              M = res$M,
-              threshold = a,
-              p_accept = p_a,
-              accepted = res$accepted,
-              engine = engine))
+  core <- if (engine == "R") {
+    .design_r(
+      X = inputs$X,
+      n_treat = inputs$n_treat,
+      threshold = criterion$threshold,
+      max_tries = inputs$max_tries,
+      S_inv = covariance$inverse
+    )
+  } else {
+    design_cpp_core(
+      X = inputs$X,
+      n1 = inputs$n_treat,
+      a = criterion$threshold,
+      max_tries = inputs$max_tries,
+      S_inv = covariance$inverse
+    )
+  }
 
+  result <- list(
+    Z = as.numeric(core$Z),
+    tries = as.integer(core$tries),
+    mahalanobis = as.numeric(core$M),
+    threshold = criterion$threshold,
+    accept_prob = criterion$accept_prob,
+    criterion_type = criterion$type,
+    accepted = isTRUE(core$accepted),
+    engine = engine,
+    n_treat = inputs$n_treat,
+    n_control = nrow(inputs$X) - inputs$n_treat
+  )
+  class(result) <- c("rerand_design_result", "list")
+  result
 }
 
+#' @export
+print.rerand_design_result <- function(x, ...) {
+  cat("Rerandomization design\n")
+  cat("  engine:        ", x$engine, "\n", sep = "")
+  cat("  criterion:     ", x$criterion_type, "\n", sep = "")
+  cat("  accepted:      ", x$accepted, "\n", sep = "")
+  cat("  tries:         ", x$tries, "\n", sep = "")
+  cat("  Mahalanobis M: ", format(x$mahalanobis), "\n", sep = "")
+  cat("  threshold:     ", format(x$threshold), "\n", sep = "")
+  cat("  treated:       ", x$n_treat, "\n", sep = "")
+  cat("  control:       ", x$n_control, "\n", sep = "")
+  invisible(x)
+}
+
+#' @export
+summary.rerand_design_result <- function(object, ...) {
+  summary <- object[c(
+    "accepted", "tries", "mahalanobis", "threshold", "accept_prob",
+    "criterion_type", "engine", "n_treat", "n_control"
+  )]
+  class(summary) <- c("summary.rerand_design_result", "list")
+  summary
+}
+
+#' @export
+print.summary.rerand_design_result <- function(x, ...) {
+  print.rerand_design_result(x, ...)
+  invisible(x)
+}

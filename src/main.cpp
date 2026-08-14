@@ -17,24 +17,16 @@ inline void sample_Z(arma::vec& Z, arma::uvec& perm, int n, int n1) {
 }
 
 // [[Rcpp::export]]
-Rcpp::List design_cpp(const arma::mat& X,
+Rcpp::List design_cpp_core(const arma::mat& X,
                         const int n1,
                         const double a,
-                        const int max_tries) {
+                        const int max_tries,
+                        const arma::mat& S_inv) {
 
 
   const int n = X.n_rows;
   const int K = X.n_cols;
   const int n0 = n - n1;
-
-  // --- covariance + inverse (inside C++) ---
-  arma::mat S = arma::cov(X);
-  arma::mat S_inv;
-
-  bool ok = arma::inv_sympd(S_inv, S);
-  if (!ok) {
-    S_inv = arma::pinv(S);
-  }
 
   arma::vec Z(n, arma::fill::zeros);
   arma::vec Z0(n);
@@ -60,6 +52,7 @@ Rcpp::List design_cpp(const arma::mat& X,
 
     // Mahalanobis distance
     M = scale * arma::dot( diff, S_inv * diff );
+    if (M < 0.0 && M > -1e-10) M = 0.0;
 
 
     if (M <= a) {
@@ -71,7 +64,7 @@ Rcpp::List design_cpp(const arma::mat& X,
 
 
   if (!accepted) {
-    warning("Maximum tries exceeded without reaching threshold. Returning last assignment anyway.");
+    warning("Maximum tries exceeded without reaching threshold; returning the last assignment.");
   }
 
 
@@ -84,9 +77,8 @@ Rcpp::List design_cpp(const arma::mat& X,
 }
 
 // [[Rcpp::export]]
-double get_quantile_cpp(double R2, int K, double p_a, double alpha, int n_sim) {
+double get_quantile_cpp(double R2, int K, double a, double alpha, int n_sim) {
 
-  double a = R::qchisq(p_a, (double)K, 1, 0);
   double target_prob = 2.0 * alpha - 1.0;
 
   arma::vec abs_dist(n_sim);
@@ -105,7 +97,7 @@ double get_quantile_cpp(double R2, int K, double p_a, double alpha, int n_sim) {
 
   arma::vec sorted_abs_dist = arma::sort(abs_dist);
 
-  int target_idx = (int)(target_prob * n_sim) - 1;
+  int target_idx = (int)std::ceil(target_prob * n_sim) - 1;
   if (target_idx < 0) target_idx = 0;
 
   return sorted_abs_dist(target_idx);

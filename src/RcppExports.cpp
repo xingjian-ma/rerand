@@ -11,9 +11,9 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// design_cpp
-Rcpp::List design_cpp(const arma::mat& X, const int n1, const double a, const int max_tries);
-RcppExport SEXP _rerand_design_cpp(SEXP XSEXP, SEXP n1SEXP, SEXP aSEXP, SEXP max_triesSEXP) {
+// design_cpp_core
+Rcpp::List design_cpp_core(const arma::mat& X, const int n1, const double a, const int max_tries, const arma::mat& S_inv);
+RcppExport SEXP _rerand_design_cpp_core(SEXP XSEXP, SEXP n1SEXP, SEXP aSEXP, SEXP max_triesSEXP, SEXP S_invSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -21,28 +21,29 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int >::type n1(n1SEXP);
     Rcpp::traits::input_parameter< const double >::type a(aSEXP);
     Rcpp::traits::input_parameter< const int >::type max_tries(max_triesSEXP);
-    rcpp_result_gen = Rcpp::wrap(design_cpp(X, n1, a, max_tries));
+    Rcpp::traits::input_parameter< const arma::mat& >::type S_inv(S_invSEXP);
+    rcpp_result_gen = Rcpp::wrap(design_cpp_core(X, n1, a, max_tries, S_inv));
     return rcpp_result_gen;
 END_RCPP
 }
 // get_quantile_cpp
-double get_quantile_cpp(double R2, int K, double p_a, double alpha, int n_sim);
-RcppExport SEXP _rerand_get_quantile_cpp(SEXP R2SEXP, SEXP KSEXP, SEXP p_aSEXP, SEXP alphaSEXP, SEXP n_simSEXP) {
+double get_quantile_cpp(double R2, int K, double a, double alpha, int n_sim);
+RcppExport SEXP _rerand_get_quantile_cpp(SEXP R2SEXP, SEXP KSEXP, SEXP aSEXP, SEXP alphaSEXP, SEXP n_simSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< double >::type R2(R2SEXP);
     Rcpp::traits::input_parameter< int >::type K(KSEXP);
-    Rcpp::traits::input_parameter< double >::type p_a(p_aSEXP);
+    Rcpp::traits::input_parameter< double >::type a(aSEXP);
     Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
     Rcpp::traits::input_parameter< int >::type n_sim(n_simSEXP);
-    rcpp_result_gen = Rcpp::wrap(get_quantile_cpp(R2, K, p_a, alpha, n_sim));
+    rcpp_result_gen = Rcpp::wrap(get_quantile_cpp(R2, K, a, alpha, n_sim));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_rerand_design_cpp", (DL_FUNC) &_rerand_design_cpp, 4},
+    {"_rerand_design_cpp_core", (DL_FUNC) &_rerand_design_cpp_core, 5},
     {"_rerand_get_quantile_cpp", (DL_FUNC) &_rerand_get_quantile_cpp, 5},
     {NULL, NULL, 0}
 };
