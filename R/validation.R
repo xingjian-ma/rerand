@@ -53,17 +53,6 @@
   engine
 }
 
-.rerand_validate_design_inputs <- function(X, n_treat, max_tries) {
-  X <- .rerand_validate_matrix(X)
-  n_treat <- .rerand_validate_n_treat(n_treat, nrow(X))
-  if (length(max_tries) != 1L || is.na(max_tries) ||
-      !is.numeric(max_tries) || max_tries != as.integer(max_tries) ||
-      max_tries < 1) {
-    stop("max_tries must be a positive integer.", call. = FALSE)
-  }
-  list(X = X, n_treat = n_treat, max_tries = as.integer(max_tries))
-}
-
 .rerand_validate_assignment <- function(Z, n, min_group_size = 1L) {
   .rerand_assert_finite_numeric(Z, "Z", n)
   if (any(!Z %in% c(0, 1))) {
@@ -75,43 +64,6 @@
     stop("Z must contain enough observations in both treatment groups.", call. = FALSE)
   }
   list(Z = as.numeric(Z), n_treat = n_treat, n_control = n_control)
-}
-
-.rerand_validate_estimate_inputs <- function(Y_obs, Z, X, method,
-                                             theoretical, Y_full) {
-  if (length(method) != 1L || is.na(method) || !method %in% c("dim", "lin")) {
-    stop("method must be one of 'dim' or 'lin'.", call. = FALSE)
-  }
-  if (length(theoretical) != 1L || is.na(theoretical) || !is.logical(theoretical)) {
-    stop("theoretical must be TRUE or FALSE.", call. = FALSE)
-  }
-  .rerand_assert_finite_numeric(Y_obs, "Y_obs")
-  assignment <- .rerand_validate_assignment(Z, length(Y_obs), min_group_size = 2L)
-  if (is.null(X)) {
-    if (method == "lin") {
-      stop("X is required for method 'lin'.", call. = FALSE)
-    }
-  } else {
-    X <- .rerand_validate_matrix(X, n = length(Y_obs))
-  }
-  if (theoretical) {
-    if (is.null(Y_full) || !is.matrix(Y_full) || !is.numeric(Y_full) ||
-        any(!is.finite(Y_full)) || nrow(Y_full) != length(Y_obs) ||
-        ncol(Y_full) != 2L) {
-      stop("Y_full must be a finite numeric matrix with n rows and two columns.",
-           call. = FALSE)
-    }
-  } else if (!is.null(Y_full)) {
-    warning("Y_full is ignored because theoretical = FALSE.", call. = FALSE)
-  }
-  list(
-    Y_obs = as.numeric(Y_obs),
-    assignment = assignment,
-    X = X,
-    method = method,
-    theoretical = theoretical,
-    Y_full = Y_full
-  )
 }
 
 .rerand_validate_simulation_inputs <- function(R2, K, alpha, n_sim) {

@@ -24,66 +24,80 @@ The development version can be installed from the repository with:
 remotes::install_github("YOUR_USERNAME/rerand")
 ```
 
-## Design
+## Design and assignment
 
-The design API requires exactly one acceptance criterion. An acceptance
-probability is converted to a Mahalanobis threshold using the effective rank
-of the covariate matrix.
+`rerand_design()` accepts a numeric matrix or a data frame. For data-frame
+input, use a one-sided formula to select balance covariates; without a formula,
+every column except `id` is used. Factors and character columns are encoded
+automatically. An acceptance probability or direct threshold is required.
 
 ```{r, eval = FALSE}
 library(rerand)
 
 set.seed(123)
-X <- matrix(rnorm(100 * 3), nrow = 100, ncol = 3)
+data <- data.frame(
+  id = paste0("unit-", seq_len(100)),
+  age = rnorm(100, 45, 12),
+  site = sample(c("A", "B", "C"), 100, replace = TRUE)
+)
 
 design <- rerand_design(
-  X = X,
+  data,
   n_treat = 50,
+  formula = ~ age + site,
+  id = "id",
   accept_prob = 0.1,
-  max_tries = 10000,
+  seed = 123,
   engine = "cpp"
 )
 
 design
-design$Z
+assigned_data <- as.data.frame(design)
+balance(design)
 ```
 
-The R reference implementation can be selected with `engine = "R"`. A
-direct threshold can be supplied instead of `accept_prob`:
+For repeated assignment generation, prepare a reusable specification and call
+`rerand_draw()`. A direct threshold can be supplied instead of `accept_prob`.
 
 ```{r, eval = FALSE}
-design <- rerand_design(X, n_treat = 50, threshold = 1.5)
+spec <- rerand_spec(data, n_treat = 50, formula = ~ age + site,
+                    id = "id", threshold = 1.5)
+draws <- rerand_draw(spec, n_draws = 20, seed = 42)
 ```
 
 ## Estimation
 
-`rerand_estimate()` supports difference-in-means and Lin's fully interacted
-regression adjustment. Use `accept_prob = 1` for complete randomization.
+`rerand_estimate()` uses a formula and a data frame. The first right-hand-side
+term is the treatment column. With `method = "dim"`, a supplied design object
+provides the assignment, balance covariates, and rerandomization criterion.
+With `method = "lin"`, the covariates in the formula are the adjustment set;
+`Y ~ Z` is intentionally rejected because it contains no adjustment covariate.
 
 ```{r, eval = FALSE}
-Y0 <- rnorm(100)
-Y1 <- Y0 + 1 + X[, 1]
-Y_obs <- ifelse(design$Z == 1, Y1, Y0)
+Y0 <- 0.1 * data$age + rnorm(100)
+Y1 <- Y0 + 1
+assigned_data$Y <- ifelse(assigned_data$Z == 1, Y1, Y0)
 
 estimate <- rerand_estimate(
-  Y_obs = Y_obs,
-  Z = design$Z,
-  X = X,
-  method = "dim",
-  accept_prob = 0.1
+  Y ~ Z,
+  data = assigned_data,
+  design = design,
+  method = "dim"
 )
 
 estimate
-estimate$tau_hat
-estimate$se_ding
+confint(estimate)
 ```
 
-Set `theoretical = TRUE` and provide `Y_full = cbind(Y0, Y1)` to calculate
-population-level benchmarks alongside the sample estimate.
+For Lin's fully interacted adjustment, select covariates directly in the
+formula:
 
-## Compatibility
+```{r, eval = FALSE}
+lin_estimate <- rerand_estimate(Y ~ Z + age + site, assigned_data,
+                                method = "lin")
+```
 
-The canonical API uses snake_case names. Historical point-notation and
-low-level function names remain available temporarily with deprecation
-warnings. New code should use `rerand_design()`, `rerand_estimate()`, and
-`get_quantile()`.
+Use `rerand_population_stats(cbind(Y0, Y1), design = design)` for
+population-level benchmarks. `get_quantile()` uses deterministic numerical
+integration by default; select `method = "simulation"` only when a simulation
+approximation is desired.

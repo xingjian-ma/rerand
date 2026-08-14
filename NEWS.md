@@ -1,10 +1,14 @@
 # rerand 0.0.0.9000
 
-## API refactor
+## Usability and API overhaul
 
-- Added `rerand_design()`, `rerand_estimate()`, and `get_quantile()` as the
-  canonical APIs.
-- Added `rerand_design_result` and `rerand_estimate_result` S3 result classes.
-- Unified R and C++ criterion handling and corrected quantile simulation
-  consistency.
-- Retained historical exported functions as deprecated compatibility wrappers.
+- `rerand_design()` now accepts matrices or data frames, supports one-sided
+  balance formulas, ID columns, automatic factor encoding, reusable
+  specifications, and diagnostic assignment pools.
+- `rerand_estimate()` now uses `formula` plus `data`; its matrix interface is
+  available separately as `rerand_estimate_matrix()`.
+- `rerand_population_stats()` separates population benchmarks from observed
+  outcome estimation.
+- `get_quantile()` now uses deterministic numerical integration by default.
+- Historical point-notation aliases, deprecated wrappers, and `p_accept` have
+  been removed.
