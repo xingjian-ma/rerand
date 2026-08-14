@@ -40,16 +40,17 @@ test_that("rank-deficient covariates are handled consistently", {
 
 test_that("estimation validates assignment and criterion inputs", {
   Y <- seq_len(10)
+  data <- data.frame(Y = Y, Z = rep(0:1, each = 5), x = seq_len(10))
   expect_error(
-    rerand_estimate(Y, rep(0:1, each = 5)),
+    rerand_estimate(Y ~ Z, data),
     "accept_prob must be explicitly set to 1"
   )
   expect_error(
-    rerand_estimate(Y, c(rep(1, 9), 0), accept_prob = 1),
+    rerand_estimate_matrix(Y, c(rep(1, 9), 0), accept_prob = 1),
     "enough observations"
   )
   expect_error(
-    rerand_estimate(Y, rep(0:1, each = 5), method = "lin", accept_prob = 1),
-    "X is required"
+    rerand_estimate(Y ~ Z, data, method = "lin"),
+    "requires at least one covariate"
   )
 })

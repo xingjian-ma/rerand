@@ -2,46 +2,44 @@
 % Please edit documentation in R/estimate.R
 \name{rerand_estimate}
 \alias{rerand_estimate}
-\title{Estimate an average treatment effect under rerandomization}
+\title{Estimate an average treatment effect from a formula and data frame}
 \usage{
 rerand_estimate(
-  Y_obs,
-  Z,
-  X = NULL,
+  formula,
+  data,
+  design = NULL,
   method = c("dim", "lin"),
+  treated = NULL,
   accept_prob = NULL,
   threshold = NULL,
-  theoretical = FALSE,
-  Y_full = NULL,
-  p_accept = NULL
+  se_type = NULL
 )
 }
 \arguments{
-\item{Y_obs}{Observed outcomes.}
+\item{formula}{A two-sided formula. The first right-hand-side term is the
+untransformed treatment column; subsequent terms are covariates.}
 
-\item{Z}{Binary treatment assignment.}
+\item{data}{Data frame containing the outcome, treatment, and covariates.}
 
-\item{X}{Numeric covariate matrix. Required for \code{method = "lin"} and for
-rerandomization adjustment.}
+\item{design}{Optional \code{rerand_design_result}. For difference-in-means it
+supplies the assignment, balance covariates, and rerandomization criterion.}
 
-\item{method}{Either \code{"dim"} for difference-in-means or \code{"lin"} for Lin's
-fully interacted regression adjustment.}
+\item{method}{Either \code{"dim"} or \code{"lin"}.}
 
-\item{accept_prob}{Acceptance probability. Mutually exclusive with
-\code{threshold}.}
+\item{treated}{Treated level for a two-level factor or character treatment.}
 
-\item{threshold}{Direct Mahalanobis threshold. Mutually exclusive with
-\code{accept_prob}.}
+\item{accept_prob}{Acceptance probability when estimating difference-in-means
+without \code{design}. Mutually exclusive with \code{threshold}.}
 
-\item{theoretical}{Whether to calculate population-level quantities.}
+\item{threshold}{Direct Mahalanobis threshold when estimating
+difference-in-means without \code{design}.}
 
-\item{Y_full}{Potential outcomes matrix with columns Y(0) and Y(1).}
-
-\item{p_accept}{Deprecated alias for \code{accept_prob}.}
+\item{se_type}{Standard error for difference-in-means: \code{"neyman"} or
+\code{"ding"}. The default is \code{"neyman"}.}
 }
 \value{
 An object of class \code{rerand_estimate_result}.
 }
 \description{
-Estimate an average treatment effect under rerandomization
+Estimate an average treatment effect from a formula and data frame
 }
