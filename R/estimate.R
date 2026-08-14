@@ -25,7 +25,7 @@
 #' @importFrom car hccm
 #' @importFrom checkmate assert_numeric assert_matrix assert_subset assert_choice
 #' @export
-rerand_estimate <- function(Y_obs, Z, X = NULL,
+rerand.estimate <- function(Y_obs, Z, X = NULL,
                             method = c("dim", "lin"),
                             p_accept = 1,
                             theoretical = FALSE,
@@ -58,13 +58,13 @@ rerand_estimate <- function(Y_obs, Z, X = NULL,
   sample_stats <- calc_sample_stats(Y_obs = Y_obs, Z = Z, X = X, p_accept = p_a)
 
   if (method == "dim") {
-    dim_res <- est_dim(Y_obs = Y_obs, Z = Z, X = X, p_accept = p_a, sample_stats = sample_stats)
+    dim_res <- estimate.dim(Y_obs = Y_obs, Z = Z, X = X, p_accept = p_a, sample_stats = sample_stats)
     tau_hat <- dim_res$tau_hat
     se_neyman <- dim_res$se_neyman
     se_ding <- dim_res$se_ding
 
   } else {
-    lin_res <- est_lin(Y_obs = Y_obs, Z = Z, X = X, sample_stats = sample_stats)
+    lin_res <- estimate.lin(Y_obs = Y_obs, Z = Z, X = X, sample_stats = sample_stats)
     tau_hat <- lin_res$tau_hat
     se_ehw <- lin_res$se_ehw
     fit <- lin_res$fit

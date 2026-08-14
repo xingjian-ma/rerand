@@ -22,6 +22,7 @@
 #'   \item{tries}{Integer scalar; number of random draws made until acceptance.}
 #'   \item{M}{Numeric scalar; Mahalanobis dsistance of the accepted assignment.}
 #'   \item{threshold}{Numeric scalar; threshold Mahalanobis distance used for acceptance.}
+
 #'   \item{p_accept}{Numeric scalar; acceptance probability used.}
 #'   \item{accepted}{Logical scalar; indicates whether an acceptable assignment was found within max_tries.}
 #'   \item{engine}{Character scalar; computation engine used ("R" or "cpp").}
@@ -30,10 +31,10 @@
 #' @examples
 #' set.seed(123)
 #' X <- matrix(rnorm(100 * 3), nrow = 100, ncol = 3)  # 100 units, 3 covariates
-#' result <- rerand_design(X, n1 = 50, p_accept = 0.1, max_tries = 10000)
+#' result <- rerand.design(X, n1 = 50, p_accept = 0.1, max_tries = 10000)
 #'
 #' @export
-rerand_design <- function(X,
+rerand.design <- function(X,
                 n1,
                 p_accept = 0.1,
                 threshold = NULL,
@@ -76,7 +77,7 @@ rerand_design <- function(X,
 
   # run core computation
   if (engine == "R") {
-    res <- design_R(X = X,
+    res <- design.R(X = X,
                       n1 = n1,
                       a = a,
                       max_tries = max_tries)

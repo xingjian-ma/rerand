@@ -8,7 +8,7 @@
 #' @return A list with accepted assignment and diagnostics.
 #' @keywords internal
 #' @export
-design_R <- function(X, n1, a, max_tries) {
+design.R <- function(X, n1, a, max_tries) {
 
   n <- nrow(X)
   n0 <- n - n1

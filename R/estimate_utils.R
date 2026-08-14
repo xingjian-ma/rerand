@@ -18,7 +18,7 @@
 #' }
 #'
 #' @examples
-#' res <- est_dim(Y_obs = rnorm(100), Z = rbinom(100, 1, 0.5), p_accept = 1)
+#' res <- estimate.dim(Y_obs = rnorm(100), Z = rbinom(100, 1, 0.5), p_accept = 1)
 #'
 #' @keywords internal
 calc_sample_stats <- function(Y_obs, Z, X = NULL, p_accept = 1) {
@@ -111,11 +111,11 @@ calc_sample_stats <- function(Y_obs, Z, X = NULL, p_accept = 1) {
 #' }
 #'
 #' @examples
-#' res <- est_dim(Y_obs = rnorm(100), Z = rbinom(100, 1, 0.5), p_accept = 1)
+#' res <- estimate.dim(Y_obs = rnorm(100), Z = rbinom(100, 1, 0.5), p_accept = 1)
 #'
 #' @keywords internal
 #' @export
-est_dim <- function(Y_obs, Z, X = NULL, p_accept = 1, ...) {
+estimate.dim <- function(Y_obs, Z, X = NULL, p_accept = 1, ...) {
 
   dots <- list(...)
   sample_stats <- dots$sample_stats
@@ -163,11 +163,11 @@ est_dim <- function(Y_obs, Z, X = NULL, p_accept = 1, ...) {
 #'
 #' @examples
 #' X <- matrix(rnorm(200), nrow = 100, ncol = 2)
-#' res <- est_lin(Y_obs = rnorm(100), Z = rbinom(100, 1, 0.5), X = X)
+#' res <- estimate.lin(Y_obs = rnorm(100), Z = rbinom(100, 1, 0.5), X = X)
 #'
 #' @keywords internal
 #' @export
-est_lin <- function(Y_obs, Z, X, ...) {
+estimate.lin <- function(Y_obs, Z, X, ...) {
 
   dots <- list(...)
   sample_stats <- dots$sample_stats
@@ -292,7 +292,7 @@ calc_population_stats <- function(Y_full, X = NULL, n1, p_accept = 1) {
 #' @return Numeric scalar; the estimated quantile of mixed Gaussian distribution.
 #' @keywords internal
 #' @export
-get_quantile <- function(R2, K, p_accept, alpha = 0.975, n_sim = 1e5, engine = "cpp") {
+get.quantile <- function(R2, K, p_accept, alpha = 0.975, n_sim = 1e5, engine = "cpp") {
 
   if (engine == "cpp") {
     quantile <- get_quantile_cpp(R2 = R2, K = K, p_a = p_accept, alpha = alpha, n_sim = n_sim)

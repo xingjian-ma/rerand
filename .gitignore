@@ -54,3 +54,6 @@ tests/testthat.Rout.*
 # --------------------------------------------------------------------
 .DS_Store
 Thumbs.db
+
+# Local agent notes
+AGENTS.md
