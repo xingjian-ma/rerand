@@ -23,6 +23,29 @@
   X
 }
 
+.rerand_validate_n_treat <- function(n_treat, n) {
+  if (length(n_treat) != 1L || is.na(n_treat) ||
+      !is.numeric(n_treat) || !is.finite(n_treat) ||
+      n_treat != as.integer(n_treat)) {
+    stop("n_treat must be one integer.", call. = FALSE)
+  }
+  n_treat <- as.integer(n_treat)
+  if (n_treat < 1L || n_treat >= n) {
+    stop("n_treat must be between 1 and the number of units minus 1.",
+         call. = FALSE)
+  }
+  n_treat
+}
+
+.rerand_validate_tol <- function(tol) {
+  if (length(tol) != 1L || !is.numeric(tol) || !is.finite(tol) ||
+      tol <= 0 || tol >= 1) {
+    stop("tol must be one finite number strictly between 0 and 1.",
+         call. = FALSE)
+  }
+  as.numeric(tol)
+}
+
 .rerand_validate_engine <- function(engine) {
   if (length(engine) != 1L || is.na(engine) || !engine %in% c("cpp", "R")) {
     stop("engine must be one of 'cpp' or 'R'.", call. = FALSE)
@@ -32,14 +55,7 @@
 
 .rerand_validate_design_inputs <- function(X, n_treat, max_tries) {
   X <- .rerand_validate_matrix(X)
-  if (length(n_treat) != 1L || is.na(n_treat) ||
-      !is.numeric(n_treat) || n_treat != as.integer(n_treat)) {
-    stop("n_treat must be one integer.", call. = FALSE)
-  }
-  n_treat <- as.integer(n_treat)
-  if (n_treat < 1L || n_treat >= nrow(X)) {
-    stop("n_treat must be between 1 and nrow(X) - 1.", call. = FALSE)
-  }
+  n_treat <- .rerand_validate_n_treat(n_treat, nrow(X))
   if (length(max_tries) != 1L || is.na(max_tries) ||
       !is.numeric(max_tries) || max_tries != as.integer(max_tries) ||
       max_tries < 1) {
