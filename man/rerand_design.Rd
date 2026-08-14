@@ -5,20 +5,26 @@
 \title{Generate a rerandomized treatment assignment}
 \usage{
 rerand_design(
-  X,
+  data,
   n_treat,
+  formula = NULL,
   accept_prob = NULL,
   threshold = NULL,
-  max_tries = 10000L,
+  id = NULL,
+  max_tries = NULL,
+  failure_prob = 1e-06,
   seed = NULL,
   engine = c("cpp", "R"),
-  p_accept = NULL
+  on_failure = c("error", "warn"),
+  tol = 1e-10
 )
 }
 \arguments{
-\item{X}{Numeric covariate matrix.}
+\item{data}{Numeric matrix or data frame of pretreatment covariates.}
 
 \item{n_treat}{Number of treated units.}
+
+\item{formula}{Optional one-sided formula selecting balance covariates.}
 
 \item{accept_prob}{Target acceptance probability used to derive the
 Mahalanobis threshold. Mutually exclusive with \code{threshold}.}
@@ -26,13 +32,21 @@ Mahalanobis threshold. Mutually exclusive with \code{threshold}.}
 \item{threshold}{Direct Mahalanobis threshold. Mutually exclusive with
 \code{accept_prob}.}
 
-\item{max_tries}{Maximum number of assignments to draw.}
+\item{id}{Optional name of a unique ID column in data-frame input.}
+
+\item{max_tries}{Maximum number of assignments to draw. By default it is
+determined from \code{failure_prob} and the implied acceptance probability.}
+
+\item{failure_prob}{Upper bound on the probability of exhausting the default
+number of draws without an accepted assignment.}
 
 \item{seed}{Optional integer seed.}
 
 \item{engine}{Either \code{"cpp"} or \code{"R"}.}
 
-\item{p_accept}{Deprecated alias for \code{accept_prob}.}
+\item{on_failure}{Whether to error or warn after exhausting \code{max_tries}.}
+
+\item{tol}{Relative tolerance used to determine the effective covariate rank.}
 }
 \value{
 An object of class \code{rerand_design_result}.

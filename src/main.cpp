@@ -18,10 +18,9 @@ inline void sample_Z(arma::vec& Z, arma::uvec& perm, int n, int n1) {
 
 // [[Rcpp::export]]
 Rcpp::List design_cpp_core(const arma::mat& X,
-                        const int n1,
-                        const double a,
-                        const int max_tries,
-                        const arma::mat& S_inv) {
+                           const int n1,
+                           const double a,
+                           const int max_tries) {
 
 
   const int n = X.n_rows;
@@ -29,9 +28,9 @@ Rcpp::List design_cpp_core(const arma::mat& X,
   const int n0 = n - n1;
 
   arma::vec Z(n, arma::fill::zeros);
-  arma::vec Z0(n);
-  arma::vec xbar1(K), xbar0(K), diff(K);
+  arma::vec treated_total(K), diff(K);
   arma::uvec perm = arma::regspace<arma::uvec>(0, n-1);
+  const arma::rowvec total = arma::sum(X, 0);
 
   const double scale = (double)n1 * (double)n0 / (double)n;
   double M = arma::datum::inf;
@@ -43,15 +42,12 @@ Rcpp::List design_cpp_core(const arma::mat& X,
 
     // draw assignment with exactly n1 treated
     sample_Z(Z, perm, n, n1);
-    Z0 = 1.0 - Z;
+    treated_total = X.t() * Z;
+    diff = treated_total / (double)n1 -
+      (total.t() - treated_total) / (double)n0;
 
-    // group means
-    xbar1 = (X.t() * Z) / (double)n1;
-    xbar0 = (X.t() * Z0) / (double)n0;
-    diff = xbar1 - xbar0;
-
-    // Mahalanobis distance
-    M = scale * arma::dot( diff, S_inv * diff );
+    // X is whitened, so its covariance matrix is the identity.
+    M = scale * arma::dot(diff, diff);
     if (M < 0.0 && M > -1e-10) M = 0.0;
 
 
@@ -60,11 +56,6 @@ Rcpp::List design_cpp_core(const arma::mat& X,
       accepted = true;
       break;
     }
-  }
-
-
-  if (!accepted) {
-    warning("Maximum tries exceeded without reaching threshold; returning the last assignment.");
   }
 
 

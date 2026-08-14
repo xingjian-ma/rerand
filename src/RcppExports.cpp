@@ -12,8 +12,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // design_cpp_core
-Rcpp::List design_cpp_core(const arma::mat& X, const int n1, const double a, const int max_tries, const arma::mat& S_inv);
-RcppExport SEXP _rerand_design_cpp_core(SEXP XSEXP, SEXP n1SEXP, SEXP aSEXP, SEXP max_triesSEXP, SEXP S_invSEXP) {
+Rcpp::List design_cpp_core(const arma::mat& X, const int n1, const double a, const int max_tries);
+RcppExport SEXP _rerand_design_cpp_core(SEXP XSEXP, SEXP n1SEXP, SEXP aSEXP, SEXP max_triesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -21,8 +21,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int >::type n1(n1SEXP);
     Rcpp::traits::input_parameter< const double >::type a(aSEXP);
     Rcpp::traits::input_parameter< const int >::type max_tries(max_triesSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type S_inv(S_invSEXP);
-    rcpp_result_gen = Rcpp::wrap(design_cpp_core(X, n1, a, max_tries, S_inv));
+    rcpp_result_gen = Rcpp::wrap(design_cpp_core(X, n1, a, max_tries));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -43,7 +42,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_rerand_design_cpp_core", (DL_FUNC) &_rerand_design_cpp_core, 5},
+    {"_rerand_design_cpp_core", (DL_FUNC) &_rerand_design_cpp_core, 4},
     {"_rerand_get_quantile_cpp", (DL_FUNC) &_rerand_get_quantile_cpp, 5},
     {NULL, NULL, 0}
 };

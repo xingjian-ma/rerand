@@ -30,10 +30,15 @@ test_that("explicit thresholds are recorded without an inferred probability", {
   expect_true(result$accepted)
 })
 
-test_that("design returns the last assignment after max tries", {
+test_that("design reports exhausted attempts according to on_failure", {
   X <- make_design_data()
+  expect_error(
+    rerand_design(X, n_treat = 20, threshold = 1e-15, max_tries = 3),
+    "Maximum tries"
+  )
   expect_warning(
-    result <- rerand_design(X, n_treat = 20, threshold = 1e-15, max_tries = 3),
+    result <- rerand_design(X, n_treat = 20, threshold = 1e-15, max_tries = 3,
+                            on_failure = "warn"),
     "Maximum tries"
   )
   expect_false(result$accepted)
@@ -46,4 +51,26 @@ test_that("design result has print and summary methods", {
   result <- rerand_design(X, n_treat = 20, accept_prob = 1)
   expect_output(print(result), "Rerandomization design")
   expect_s3_class(summary(result), "summary.rerand_design_result")
+})
+
+test_that("draw pools, balance summaries, and data extraction are available", {
+  X <- make_design_data()
+  spec <- rerand_spec(X, n_treat = 20, accept_prob = 1)
+  result <- rerand_draw(spec, n_draws = 3, seed = 42)
+
+  expect_equal(dim(result$pool$assignments), c(40, 3))
+  expect_true(all(colSums(result$pool$assignments) == 20))
+  expect_equal(nrow(result$pool$diagnostics), 3)
+  expect_equal(nrow(balance(result)), 3)
+  expect_equal(nrow(as.data.frame(result)), 40)
+  expect_true("Z" %in% names(as.data.frame(result)))
+})
+
+test_that("a seeded draw does not change the caller RNG state", {
+  X <- make_design_data()
+  spec <- rerand_spec(X, n_treat = 20, accept_prob = 1)
+  set.seed(91)
+  before <- .Random.seed
+  rerand_draw(spec, seed = 11)
+  expect_identical(.Random.seed, before)
 })
