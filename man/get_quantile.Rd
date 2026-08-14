@@ -10,9 +10,11 @@ get_quantile(
   accept_prob = NULL,
   threshold = NULL,
   alpha = 0.975,
+  method = c("integration", "simulation"),
+  integration_tol = 1e-08,
   n_sim = 100000L,
-  engine = c("cpp", "R"),
-  p_accept = NULL
+  seed = NULL,
+  engine = c("cpp", "R")
 )
 }
 \arguments{
@@ -28,11 +30,16 @@ get_quantile(
 
 \item{alpha}{Upper two-sided quantile level.}
 
-\item{n_sim}{Number of simulation draws.}
+\item{method}{Either deterministic \code{"integration"} or \code{"simulation"}.}
 
-\item{engine}{Either \code{"cpp"} or \code{"R"}.}
+\item{integration_tol}{Relative numerical-integration tolerance.}
 
-\item{p_accept}{Deprecated alias for \code{accept_prob}.}
+\item{n_sim}{Number of simulation draws when \code{method = "simulation"}.}
+
+\item{seed}{Optional integer seed for simulation. Supplying a seed preserves
+the caller's random-number-generator state.}
+
+\item{engine}{Simulation engine, either \code{"cpp"} or \code{"R"}.}
 }
 \value{
 A numeric quantile.

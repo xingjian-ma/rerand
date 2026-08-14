@@ -218,9 +218,21 @@ rerand_population_stats <- function(Y_full, design = NULL, X = NULL,
   } else {
     estimate$se_ehw
   }
+  unadjusted_standard_error <- if (method == "dim") {
+    variance <- if (se_type == "neyman") {
+      sample_stats$V_tt_hat_1
+    } else {
+      sample_stats$V_tt_hat_2
+    }
+    sqrt(variance) / sqrt(sample_stats$n)
+  } else {
+    estimate$se_ehw
+  }
   result <- list(
     tau_hat = as.numeric(estimate$tau_hat), method = method,
-    standard_error = as.numeric(standard_error), se_type = se_type,
+    standard_error = as.numeric(standard_error),
+    unadjusted_standard_error = as.numeric(unadjusted_standard_error),
+    se_type = se_type,
     se_neyman = if (method == "dim") estimate$se_neyman else NULL,
     se_ding = if (method == "dim") estimate$se_ding else NULL,
     se_ehw = if (method == "lin") estimate$se_ehw else NULL,
@@ -287,7 +299,26 @@ confint.rerand_estimate_result <- function(object, parm, level = 0.95, ...) {
       level <= 0 || level >= 1) {
     stop("level must be strictly between 0 and 1.", call. = FALSE)
   }
-  critical <- stats::qnorm((1 + level) / 2)
-  matrix(object$tau_hat + c(-1, 1) * critical * object$standard_error,
+  alpha <- (1 + level) / 2
+  uses_rerandomization <- object$method == "dim" &&
+    !is.null(object$sample_stats) &&
+    !is.null(object$sample_stats$R2_hat) &&
+    object$sample_stats$acceptance_mass < 1
+  if (uses_rerandomization) {
+    quantile_arguments <- list(
+      R2 = object$sample_stats$R2_hat,
+      K = object$sample_stats$K,
+      alpha = alpha
+    )
+    if (object$sample_stats$criterion_type == "probability") {
+      quantile_arguments$accept_prob <- object$sample_stats$accept_prob
+    } else {
+      quantile_arguments$threshold <- object$sample_stats$threshold
+    }
+    critical <- do.call(get_quantile, quantile_arguments)
+  } else {
+    critical <- stats::qnorm(alpha)
+  }
+  matrix(object$tau_hat + c(-1, 1) * critical * object$unadjusted_standard_error,
          nrow = 1L, dimnames = list("treatment", c("lower", "upper")))
 }
