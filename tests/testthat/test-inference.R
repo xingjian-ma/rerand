@@ -18,19 +18,18 @@ make_inference_data <- function(accept_prob = 1) {
   list(data = data, assignment = assignment)
 }
 
-test_that("CRE inference uses normal reference for every estimator", {
-  inputs <- make_inference_data(accept_prob = 1)
-  estimates <- list(
-    dim = rerand_estimate(inputs$data, inputs$assignment, formula = Y ~ Z),
+test_that("inference uses design-aware references and validates levels", {
+  cre <- make_inference_data(accept_prob = 1)
+  cre_estimates <- list(
+    dim = rerand_estimate(cre$data, cre$assignment, formula = Y ~ Z),
     ancova = rerand_estimate(
-      inputs$data, inputs$assignment, formula = Y ~ Z + x1 + x2
+      cre$data, cre$assignment, formula = Y ~ Z + x1 + x2
     ),
     lin = rerand_estimate(
-      inputs$data, inputs$assignment, formula = Y ~ Z * (x1 + x2)
+      cre$data, cre$assignment, formula = Y ~ Z * (x1 + x2)
     )
   )
-
-  for (estimate in estimates) {
+  for (estimate in cre_estimates) {
     inference <- rerand_inference(estimate)
     expect_s3_class(inference, "rerand_inference")
     expect_equal(inference$design_method, "cre")
@@ -39,21 +38,18 @@ test_that("CRE inference uses normal reference for every estimator", {
     expect_equal(confint(inference), inference$interval)
     expect_true(all(is.finite(inference$interval)))
   }
-})
 
-test_that("ReM inference uses estimator-specific ReM intervals", {
-  inputs <- make_inference_data(accept_prob = 0.2)
-  estimates <- list(
-    dim = rerand_estimate(inputs$data, inputs$assignment, formula = Y ~ Z),
+  rem <- make_inference_data(accept_prob = 0.2)
+  rem_estimates <- list(
+    dim = rerand_estimate(rem$data, rem$assignment, formula = Y ~ Z),
     ancova = rerand_estimate(
-      inputs$data, inputs$assignment, formula = Y ~ Z + x1 + x2
+      rem$data, rem$assignment, formula = Y ~ Z + x1 + x2
     ),
     lin = rerand_estimate(
-      inputs$data, inputs$assignment, formula = Y ~ Z * (x1 + x2)
+      rem$data, rem$assignment, formula = Y ~ Z * (x1 + x2)
     )
   )
-
-  for (estimate in estimates) {
+  for (estimate in rem_estimates) {
     inference <- rerand_inference(estimate)
     expect_equal(inference$design_method, "rem")
     expect_equal(inference$reference_distribution, "rem")
@@ -62,12 +58,23 @@ test_that("ReM inference uses estimator-specific ReM intervals", {
     expect_true(all(is.finite(inference$interval)))
     expect_equal(inference$standard_error, estimate$unadjusted_standard_error)
   }
-})
 
-test_that("inference validates object type and confidence level", {
-  inputs <- make_inference_data()
-  estimate <- rerand_estimate(inputs$data, inputs$assignment, formula = Y ~ Z)
-  expect_error(rerand_inference(inputs$assignment), "rerand_estimate")
+  estimate <- cre_estimates$dim
+  expect_error(rerand_inference(cre$assignment), "rerand_estimate")
   expect_error(rerand_inference(estimate, level = 1), "level")
   expect_error(confint(rerand_inference(estimate), level = 0.9), "fixed")
+
+  criterion <- rerand_design(
+    data.frame(x1 = rnorm(20), x2 = rnorm(20)),
+    n_treat = 10, accept_prob = 0.2
+  )$criterion
+  set.seed(22)
+  before <- .Random.seed
+  simulated <- rerand:::.rerand_quantile(
+    R2 = 0.4, K = criterion$K, threshold = criterion$threshold,
+    alpha = 0.975, method = "simulation", n_sim = 1000,
+    seed = 9, engine = "R"
+  )
+  expect_identical(.Random.seed, before)
+  expect_true(is.finite(simulated))
 })

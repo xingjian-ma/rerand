@@ -4,80 +4,92 @@ make_design_data <- function() {
                     dimnames = list(NULL, c("x1", "x2", "x3"))))
 }
 
-test_that("both design engines satisfy the assignment contract", {
+test_that("design preparation validates covariates and criteria", {
   data <- make_design_data()
-  design <- rerand_design(data, n_treat = 20, accept_prob = 1)
-  cpp <- rerand_assign(design, engine = "cpp")
-  r_engine <- rerand_assign(design, engine = "R")
-
-  expect_s3_class(cpp, "rerand_assignment")
-  expect_s3_class(r_engine, "rerand_assignment")
-  expect_equal(length(cpp$Z), nrow(data))
-  expect_equal(sum(cpp$Z), 20)
-  expect_equal(sum(r_engine$Z), 20)
-  expect_true(cpp$accepted)
-  expect_true(r_engine$accepted)
-  expect_lte(cpp$mahalanobis, cpp$threshold)
-  expect_lte(r_engine$mahalanobis, r_engine$threshold)
-  expect_equal(cpp$criterion_type, "probability")
-  expect_equal(cpp$design_method, "cre")
-})
-
-test_that("explicit thresholds are recorded without an inferred probability", {
-  data <- make_design_data()
-  design <- rerand_design(data, n_treat = 20, threshold = 100)
-  result <- rerand_assign(design)
-
-  expect_equal(result$criterion_type, "threshold")
-  expect_equal(result$design_method, "rem")
-  expect_null(result$accept_prob)
-  expect_equal(result$threshold, 100)
-  expect_true(result$accepted)
-})
-
-test_that("design reports exhausted attempts according to on_failure", {
-  data <- make_design_data()
-  design <- rerand_design(data, n_treat = 20, threshold = 1e-15)
   expect_error(
-    rerand_assign(design, max_tries = 3),
-    "Maximum tries"
+    rerand_design(data, n_treat = 20),
+    "Exactly one of accept_prob or threshold"
   )
-  expect_warning(
-    result <- rerand_assign(design, max_tries = 3,
-                            on_failure = "warn"),
-    "Maximum tries"
+  expect_error(
+    rerand_design(data, n_treat = 20, accept_prob = 0.5, threshold = 1),
+    "mutually exclusive"
   )
-  expect_false(result$accepted)
-  expect_equal(result$tries, 3)
-  expect_equal(sum(result$Z), 20)
-})
+  expect_error(
+    rerand_design(data, n_treat = 20, accept_prob = 0),
+    "accept_prob"
+  )
+  expect_error(
+    rerand_design(data, n_treat = 20, threshold = 0),
+    "threshold"
+  )
 
-test_that("design result has print and summary methods", {
-  data <- make_design_data()
   design <- rerand_design(data, n_treat = 20, accept_prob = 1)
-  result <- rerand_assign(design)
-  expect_output(print(result), "Rerandomization assignment")
-  expect_s3_class(summary(result), "summary.rerand_assignment")
-})
+  expect_s3_class(design, "rerand_design")
+  expect_equal(design$n_treat, 20)
+  expect_equal(design$design_method, "cre")
+  expect_equal(unname(crossprod(design$whitened) / 39), diag(3),
+               tolerance = 1e-10)
+  expect_output(print(design), "Rerandomization design")
+  expect_s3_class(summary(design), "summary.rerand_design")
 
-test_that("draw pools, balance summaries, and data extraction are available", {
-  data <- make_design_data()
-  design <- rerand_design(data, n_treat = 20, accept_prob = 1)
-  result <- rerand_assign(design, n_draws = 3, seed = 42)
+  threshold_design <- rerand_design(data, n_treat = 20, threshold = 100)
+  expect_equal(threshold_design$criterion$type, "threshold")
+  expect_null(threshold_design$criterion$accept_prob)
+  expect_equal(threshold_design$design_method, "rem")
 
-  expect_equal(dim(result$pool$assignments), c(40, 3))
-  expect_true(all(colSums(result$pool$assignments) == 20))
-  expect_equal(nrow(result$pool$diagnostics), 3)
-  expect_equal(result$design_method, "cre")
-  expect_equal(nrow(as.data.frame(result)), 40)
-  expect_true("Z" %in% names(as.data.frame(result)))
-})
+  factor_data <- data.frame(
+    unit = paste0("u", seq_len(20)), x = seq_len(20),
+    group = rep(c("a", "b"), 10), unused = rnorm(20)
+  )
+  factor_design <- rerand_design(
+    factor_data, n_treat = 10, formula = ~ x + group, id = "unit",
+    accept_prob = 0.2
+  )
+  expect_equal(factor_design$unit_id, factor_data$unit)
+  expect_equal(colnames(factor_design$X), c("x", "groupb"))
+  expect_equal(factor_design$id_name, "unit")
+  expect_identical(factor_design$data, factor_data)
 
-test_that("a seeded draw does not change the caller RNG state", {
-  data <- make_design_data()
-  design <- rerand_design(data, n_treat = 20, accept_prob = 1)
-  set.seed(91)
-  before <- .Random.seed
-  rerand_assign(design, seed = 11)
-  expect_identical(.Random.seed, before)
+  all_columns <- rerand_design(
+    data.frame(
+      id = seq_len(20), x = rnorm(20), flag = rep(c(TRUE, FALSE), 10),
+      category = rep(c("a", "b"), 10)
+    ),
+    n_treat = 10, id = "id", accept_prob = 0.2
+  )
+  expect_true(all(c("x", "flagTRUE", "categoryb") %in% colnames(all_columns$X)))
+  expect_false("id" %in% colnames(all_columns$X))
+
+  expect_error(
+    rerand_design(data.frame(id = c(1, 1, 2, 3), x = 1:4),
+                  n_treat = 2, id = "id", accept_prob = 0.2),
+    "unique"
+  )
+  expect_error(
+    rerand_design(data.frame(id = 1:4, x = 1:4), n_treat = 2,
+                  formula = ~ id + x, id = "id", accept_prob = 0.2),
+    "id column"
+  )
+  expect_error(
+    rerand_design(data.frame(x = 1:4,
+                             when = as.Date("2020-01-01") + 0:3),
+                  n_treat = 2, accept_prob = 0.2),
+    "Unsupported"
+  )
+  expect_error(
+    rerand_design(matrix(1:8, nrow = 4), n_treat = 2, accept_prob = 0.2),
+    "data must be a data frame"
+  )
+
+  collinear <- rerand_design(
+    data.frame(x = seq_len(20), twice_x = 2 * seq_len(20)),
+    n_treat = 10, accept_prob = 0.2
+  )
+  expect_equal(collinear$effective_rank, 1L)
+  expect_equal(ncol(collinear$whitened), 1L)
+  expect_error(
+    rerand_design(data.frame(x = rep(1, 20), y = rep(1, 20)),
+                  n_treat = 10, accept_prob = 0.2),
+    "non-constant"
+  )
 })

@@ -1,139 +1,95 @@
-#' Generate a realized treatment assignment
+#' Prepare a rerandomization design
 #'
 #' @description
-#' Generates an assignment with exactly `n_treat` treated units and accepts it
-#' when its Mahalanobis distance is below a prespecified criterion.
+#' Encodes covariates, determines their effective rank, constructs a whitened
+#' covariate matrix, and resolves the rerandomization acceptance criterion.
+#' The returned object can be reused by `rerand_assign()`.
 #'
-#' @param design A `rerand_design` object created by [rerand_design()].
-#' @param n_draws Number of assignments to generate.
-#' @param max_tries Maximum number of assignments to draw. By default it is
-#'   determined from `failure_prob` and the implied acceptance probability.
-#' @param failure_prob Upper bound on the probability of exhausting the default
-#'   number of draws without an accepted assignment.
-#' @param seed Optional integer seed.
-#' @param engine Either `"cpp"` or `"R"`.
-#' @param on_failure Whether to error or warn after exhausting `max_tries`.
-#' @return An object of class `rerand_assignment`.
+#' @param data Data frame of pretreatment covariates.
+#' @param n_treat Number of treated units.
+#' @param formula Optional one-sided formula selecting and constructing
+#'   covariates. With `NULL`, all columns except `id` are used.
+#' @param accept_prob Target acceptance probability. Mutually exclusive with
+#'   `threshold`.
+#' @param threshold Direct Mahalanobis threshold. Mutually exclusive with
+#'   `accept_prob`.
+#' @param id Optional name of a unique ID column in data-frame input.
+#' @param tol Relative tolerance used to determine the effective covariate rank.
+#' @return An object of class `rerand_design`.
 #' @export
-rerand_assign <- function(design, n_draws = 1L, max_tries = NULL,
-                          failure_prob = 1e-6, seed = NULL,
-                          engine = c("cpp", "R"),
-                          on_failure = c("error", "warn")) {
-  if (!inherits(design, "rerand_design")) {
-    stop("design must be a rerand_design object.", call. = FALSE)
+rerand_design <- function(data, n_treat, formula = NULL,
+                          accept_prob = NULL, threshold = NULL,
+                          id = NULL, tol = 1e-10) {
+  if (!is.data.frame(data)) {
+    stop("data must be a data frame.", call. = FALSE)
   }
-  n_draws <- .rerand_validate_n_draws(n_draws)
-  max_tries <- .rerand_resolve_max_tries(
-    max_tries, design$criterion$acceptance_mass, failure_prob
+  prepared <- .rerand_prepare_covariates(data, formula = formula, id = id)
+  n_treat <- .rerand_validate_n_treat(n_treat, nrow(prepared$X))
+  transformed <- .rerand_whiten_covariates(prepared$X, tol = tol)
+  criterion <- .rerand_resolve_criterion(
+    accept_prob = accept_prob,
+    threshold = threshold,
+    K = transformed$effective_rank,
+    require_criterion = TRUE
   )
-  seed <- .rerand_validate_seed(seed)
-  engine <- .rerand_validate_engine(match.arg(engine))
-  on_failure <- match.arg(on_failure)
-
-  draw_one <- function() {
-    if (engine == "R") {
-      .design_r(design$whitened, design$n_treat, design$criterion$threshold,
-                max_tries)
-    } else {
-      design_cpp_core(design$whitened, design$n_treat,
-                      design$criterion$threshold, max_tries)
-    }
-  }
-  draws <- .rerand_with_seed(seed, lapply(seq_len(n_draws), function(...) draw_one()))
-  accepted <- vapply(draws, function(draw) isTRUE(draw$accepted), logical(1))
-  if (any(!accepted)) {
-    message <- sprintf(
-      "Maximum tries (%d) exceeded for %d of %d assignment(s).",
-      max_tries, sum(!accepted), n_draws
+  result <- c(
+    prepared,
+    transformed,
+    list(
+      n = nrow(prepared$X),
+      n_treat = n_treat,
+      n_control = nrow(prepared$X) - n_treat,
+      criterion = criterion,
+      design_method = if (criterion$type == "probability" &&
+                          criterion$accept_prob == 1) "cre" else "rem"
     )
-    if (on_failure == "error") {
-      stop(message, call. = FALSE)
-    }
-    warning(message, call. = FALSE)
-  }
-
-  assignments <- do.call(cbind, lapply(draws, `[[`, "Z"))
-  colnames(assignments) <- paste0("draw", seq_len(n_draws))
-  diagnostics <- data.frame(
-    draw = seq_len(n_draws),
-    accepted = accepted,
-    tries = vapply(draws, `[[`, integer(1), "tries"),
-    mahalanobis = vapply(draws, function(draw) as.numeric(draw$M), numeric(1))
   )
-  result <- list(
-    Z = as.numeric(assignments[, 1L]),
-    pool = list(assignments = assignments, diagnostics = diagnostics),
-    design = design,
-    tries = diagnostics$tries[1L],
-    mahalanobis = diagnostics$mahalanobis[1L],
-    threshold = design$criterion$threshold,
-    accept_prob = design$criterion$accept_prob,
-    criterion_type = design$criterion$type,
-    design_method = design$design_method,
-    accepted = diagnostics$accepted[1L],
-    engine = engine,
-    n_treat = design$n_treat,
-    n_control = design$n_control
-  )
-  class(result) <- c("rerand_assignment", "list")
+  class(result) <- c("rerand_design", "list")
   result
 }
 
 #' @export
-print.rerand_assignment <- function(x, ...) {
-  cat("Rerandomization assignment\n")
-  cat("  engine:        ", x$engine, "\n", sep = "")
-  cat("  criterion:     ", x$criterion_type, "\n", sep = "")
-  cat("  design method: ", x$design_method, "\n", sep = "")
-  cat("  accepted:      ", x$accepted, "\n", sep = "")
-  cat("  tries:         ", x$tries, "\n", sep = "")
-  cat("  Mahalanobis M: ", format(x$mahalanobis), "\n", sep = "")
-  cat("  threshold:     ", format(x$threshold), "\n", sep = "")
-  cat("  treated:       ", x$n_treat, "\n", sep = "")
-  cat("  control:       ", x$n_control, "\n", sep = "")
-  cat("  draws:         ", ncol(x$pool$assignments), "\n", sep = "")
+print.rerand_design <- function(x, ...) {
+  cat("Rerandomization design\n")
+  cat("  units:          ", x$n, "\n", sep = "")
+  cat("  treated:        ", x$n_treat, "\n", sep = "")
+  cat("  control:        ", x$n_control, "\n", sep = "")
+  cat("  encoded columns:", ncol(x$X), "\n")
+  cat("  effective rank: ", x$effective_rank, "\n", sep = "")
+  cat("  criterion:      ", x$criterion$type, "\n", sep = "")
+  cat("  design method:  ", x$design_method, "\n", sep = "")
+  cat("  threshold:      ", format(x$criterion$threshold), "\n", sep = "")
   invisible(x)
 }
 
 #' @export
-summary.rerand_assignment <- function(object, ...) {
-  summary <- object[c(
-    "accepted", "tries", "mahalanobis", "threshold", "accept_prob",
-    "criterion_type", "engine", "n_treat", "n_control"
-  )]
-  summary$design_method <- object$design_method
-  class(summary) <- c("summary.rerand_assignment", "list")
-  summary
+summary.rerand_design <- function(object, ...) {
+  result <- list(
+    n = object$n,
+    n_treat = object$n_treat,
+    n_control = object$n_control,
+    n_covariates = ncol(object$X),
+    effective_rank = object$effective_rank,
+    criterion_type = object$criterion$type,
+    design_method = object$design_method,
+    accept_prob = object$criterion$accept_prob,
+    implied_accept_prob = object$criterion$acceptance_mass,
+    threshold = object$criterion$threshold,
+    covariate_names = colnames(object$X)
+  )
+  class(result) <- c("summary.rerand_design", "list")
+  result
 }
 
 #' @export
-print.summary.rerand_assignment <- function(x, ...) {
-  print.rerand_assignment(x, ...)
+print.summary.rerand_design <- function(x, ...) {
+  cat("Rerandomization design summary\n")
+  cat("  units:          ", x$n, "\n", sep = "")
+  cat("  treated:        ", x$n_treat, "\n", sep = "")
+  cat("  control:        ", x$n_control, "\n", sep = "")
+  cat("  encoded columns:", x$n_covariates, "\n")
+  cat("  effective rank: ", x$effective_rank, "\n", sep = "")
+  cat("  criterion:      ", x$criterion_type, "\n", sep = "")
+  cat("  design method:  ", x$design_method, "\n", sep = "")
   invisible(x)
-}
-
-#' Return design data with a treatment-assignment column
-#'
-#' @param x A `rerand_assignment` object.
-#' @param row.names Ignored.
-#' @param optional Ignored.
-#' @param treatment Name of the treatment-assignment column.
-#' @param overwrite Whether to replace an existing column named `treatment`.
-#' @param ... Ignored.
-#' @export
-as.data.frame.rerand_assignment <- function(x, row.names = NULL,
-                                            optional = FALSE,
-                                            treatment = "Z",
-                                            overwrite = FALSE, ...) {
-  if (length(treatment) != 1L || !is.character(treatment) || is.na(treatment) ||
-      !nzchar(treatment)) {
-    stop("treatment must be one non-empty column name.", call. = FALSE)
-  }
-  data <- as.data.frame(x$design$data)
-  if (treatment %in% names(data) && !isTRUE(overwrite)) {
-    stop("treatment already exists in the design data; use overwrite = TRUE.",
-         call. = FALSE)
-  }
-  data[[treatment]] <- x$Z
-  data
 }

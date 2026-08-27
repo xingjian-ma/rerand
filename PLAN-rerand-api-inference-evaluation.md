@@ -188,6 +188,24 @@ The task is complete when the Commit Flow below has been completed successfully.
 - **Timestamp:** `2026-08-28T02:02:00+08:00`
 - **Checks:** Full testthat suite passed; `R CMD check --no-manual --as-cran` passed with no warnings/errors (CRAN/network and repository metadata notes only); `git diff --check` passed.
 
+### Batch 6: Consolidate source modules and tests
+
+- **Commit:** `refactor: consolidate API modules and tests`
+- **Scope:** Keep assignment generation in a dedicated `assign.R`; merge design preparation into `design.R`, estimation data/statistical helpers into `estimate.R`, and quantile helpers into `inference.R`; remove obsolete helper files; organize tests by public module with one `test_that()` per test file; regenerate affected manuals.
+
+#### Acceptance
+
+- [ ] `design.R` and `assign.R` have separate design and assignment responsibilities.
+- [ ] The test suite has one topic per file (`design`, `assign`, `estimate`, `inference`, `compare`, `evaluate`) and one test block per file.
+- [ ] The complete pipeline smoke test passes without changing the plan or creating compatibility aliases.
+- [ ] Full testthat, package checks, and documentation checks pass.
+
+#### Batch Review
+
+- **Result:** `passed`
+- **Timestamp:** `2026-08-28T01:28:26+08:00`
+- **Checks:** Full testthat suite passed; pipeline smoke test passed for ReM with DIM/ANCOVA/Lin, comparison, and potential-outcome evaluation; `R CMD check --no-manual --as-cran` passed with no warnings/errors (environment metadata notes only); `git diff --check` passed.
+
 ### Final Commit
 
 #### Total Acceptance

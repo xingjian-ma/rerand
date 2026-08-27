@@ -20,7 +20,7 @@ make_estimate_data <- function(accept_prob = 1) {
   list(data = data, design = design, assignment = assignment)
 }
 
-test_that("formula mode selects DIM, ANCOVA, and Lin", {
+test_that("estimate supports both input modes and validates complete data", {
   inputs <- make_estimate_data()
   dim <- rerand_estimate(inputs$data, inputs$assignment, formula = Y ~ Z)
   ancova <- rerand_estimate(
@@ -43,56 +43,38 @@ test_that("formula mode selects DIM, ANCOVA, and Lin", {
   expect_true(is.finite(lin$standard_error))
   expect_equal(unname(coef(lin)), lin$estimate)
   expect_equal(dim(vcov(lin)), c(1, 1))
-})
 
-test_that("selector mode requires explicit estimator and supports strings", {
-  inputs <- make_estimate_data()
-  result <- rerand_estimate(
+  selector <- rerand_estimate(
     inputs$data, inputs$assignment, outcome = "Y", treatment = "Z",
     covariates = c("x1", "x2"), estimator = "lin"
   )
-  expect_equal(result$estimator, "lin")
-  expect_equal(result$outcome_name, "Y")
-  expect_equal(result$treatment_name, "Z")
-  expect_equal(result$analysis_covariates, c("x1", "x2"))
-
+  expect_equal(selector$estimator, "lin")
+  expect_equal(selector$outcome_name, "Y")
+  expect_equal(selector$treatment_name, "Z")
+  expect_equal(selector$analysis_covariates, c("x1", "x2"))
   expect_warning(
-    dim <- rerand_estimate(
+    dim_selector <- rerand_estimate(
       inputs$data, inputs$assignment, outcome = "Y", treatment = "Z",
       covariates = "x1", estimator = "dim"
     ),
     "covariates are ignored"
   )
-  expect_equal(dim$estimator, "dim")
-  expect_error(
-    rerand_estimate(inputs$data, inputs$assignment, outcome = "Y",
-                    treatment = "Z"),
-    "estimator"
-  )
-})
+  expect_equal(dim_selector$estimator, "dim")
 
-test_that("formula mode takes priority over selector arguments", {
-  inputs <- make_estimate_data()
   expect_warning(
-    result <- rerand_estimate(
+    formula_priority <- rerand_estimate(
       inputs$data, inputs$assignment, formula = Y ~ Z,
       outcome = "Y", treatment = "Z", estimator = "lin", covariates = "x1"
     ),
     "formula takes priority"
   )
-  expect_equal(result$estimator, "dim")
-})
+  expect_equal(formula_priority$estimator, "dim")
 
-test_that("assignment and data IDs are aligned explicitly", {
-  inputs <- make_estimate_data()
   data_reordered <- inputs$data[rev(seq_len(nrow(inputs$data))), ]
-  result <- rerand_estimate(
-    inputs$data, inputs$assignment, formula = Y ~ Z
+  expect_equal(
+    rerand_estimate(data_reordered, inputs$assignment, formula = Y ~ Z)$estimate,
+    dim$estimate
   )
-  reordered <- rerand_estimate(
-    data_reordered, inputs$assignment, formula = Y ~ Z
-  )
-  expect_equal(reordered$estimate, result$estimate)
   expect_error(
     rerand_estimate(inputs$data, inputs$design, formula = Y ~ Z),
     "rerand_assignment"
@@ -103,10 +85,7 @@ test_that("assignment and data IDs are aligned explicitly", {
     rerand_estimate(mismatched, inputs$assignment, formula = Y ~ Z),
     "does not match the assignment"
   )
-})
 
-test_that("formula grammar and treatment coding are validated", {
-  inputs <- make_estimate_data()
   expect_error(
     rerand_estimate(inputs$data, inputs$assignment, formula = Y ~ Z:x1),
     "formula must be"
@@ -119,6 +98,22 @@ test_that("formula grammar and treatment coding are validated", {
     rerand_estimate(inputs$data, inputs$assignment, formula = Y ~ Z + Z:x1),
     "Treatment terms"
   )
+  expect_error(
+    rerand_estimate(inputs$data, inputs$assignment, outcome = "Y",
+                    treatment = "Z"),
+    "estimator"
+  )
+  expect_error(
+    rerand_estimate(inputs$data, inputs$assignment, outcome = "Y",
+                    treatment = "Z", estimator = "unknown"),
+    "estimator"
+  )
+  expect_error(
+    rerand_estimate(inputs$data, inputs$assignment, outcome = "Y",
+                    treatment = "Z", estimator = "ancova"),
+    "requires"
+  )
+
   factor_data <- inputs$data
   factor_data$group <- ifelse(factor_data$Z == 1, "treated", "control")
   factor_data$Z <- NULL
