@@ -1,100 +1,128 @@
-make_estimate_data <- function() {
+make_estimate_data <- function(accept_prob = 1) {
   set.seed(12)
-  X <- matrix(rnorm(120), nrow = 40, ncol = 3,
-              dimnames = list(NULL, c("x1", "x2", "x3")))
-  Z <- rep(c(1, 0), each = 20)
-  Y0 <- 0.5 * X[, 1] + rnorm(40)
-  Y1 <- Y0 + 1 + 0.5 * X[, 2]
-  data.frame(
-    id = paste0("u", seq_len(40)), Y = ifelse(Z == 1, Y1, Y0), Z = Z,
-    X, Y0 = Y0, Y1 = Y1
+  n <- 40L
+  x1 <- rnorm(n)
+  x2 <- rnorm(n)
+  x3 <- rnorm(n)
+  id <- paste0("u", seq_len(n))
+  design_data <- data.frame(id = id, x1 = x1, x2 = x2)
+  design <- rerand_design(
+    design_data, n_treat = n / 2, id = "id", accept_prob = accept_prob
   )
+  assignment <- rerand_assign(design, seed = 21)
+  Y0 <- 0.5 * x1 + rnorm(n)
+  Y1 <- Y0 + 1 + 0.5 * x2
+  data <- data.frame(
+    id = id, Y = ifelse(assignment$Z == 1, Y1, Y0),
+    Z = assignment$Z, x1 = x1, x2 = x2, x3 = x3,
+    Y0 = Y0, Y1 = Y1
+  )
+  list(data = data, design = design, assignment = assignment)
 }
 
-test_that("formula difference-in-means supports CRE and rerandomization", {
-  data <- make_estimate_data()
-  cre <- rerand_estimate(Y ~ Z, data, accept_prob = 1)
-  rem <- rerand_estimate(Y ~ Z + x1 + x2, data, accept_prob = 0.2)
+test_that("formula mode selects DIM, ANCOVA, and Lin", {
+  inputs <- make_estimate_data()
+  dim <- rerand_estimate(inputs$data, inputs$assignment, formula = Y ~ Z)
+  ancova <- rerand_estimate(
+    inputs$data, inputs$assignment, formula = Y ~ Z + x1 + x2
+  )
+  lin <- rerand_estimate(
+    inputs$data, inputs$assignment, formula = Y ~ Z * (x1 + x2)
+  )
 
-  expect_s3_class(cre, "rerand_estimate_result")
-  expect_equal(cre$method, "dim")
-  expect_true(is.finite(cre$tau_hat))
-  expect_true(is.finite(cre$se_neyman))
-  expect_null(cre$se_ding)
-  expect_true(is.finite(rem$se_ding))
-  expect_true(rem$sample_stats$R2_hat >= 0)
-  expect_equal(unname(coef(rem)), rem$tau_hat)
-  expect_equal(dim(vcov(rem)), c(1, 1))
-  expect_equal(dim(confint(rem)), c(1, 2))
+  expect_s3_class(dim, "rerand_estimate")
+  expect_equal(dim$estimator, "dim")
+  expect_true(is.finite(dim$estimate))
+  expect_true(is.finite(dim$standard_error))
+  expect_equal(dim$se_type, "neyman")
+  expect_equal(ancova$estimator, "ancova")
+  expect_s3_class(ancova$fit, "lm")
+  expect_equal(ancova$se_type, "hc2")
+  expect_equal(lin$estimator, "lin")
+  expect_s3_class(lin$fit, "lm")
+  expect_true(is.finite(lin$standard_error))
+  expect_equal(unname(coef(lin)), lin$estimate)
+  expect_equal(dim(vcov(lin)), c(1, 1))
 })
 
-test_that("design objects supply the ReM assignment and criterion", {
-  data <- make_estimate_data()
-  design <- rerand_design(data, n_treat = 20, formula = ~ x1 + x2,
-                          id = "id", accept_prob = 1, seed = 21)
-  data$Z <- design$Z
-  result <- rerand_estimate(Y ~ Z, data, design = design)
+test_that("selector mode requires explicit estimator and supports strings", {
+  inputs <- make_estimate_data()
+  result <- rerand_estimate(
+    inputs$data, inputs$assignment, outcome = "Y", treatment = "Z",
+    covariates = c("x1", "x2"), estimator = "lin"
+  )
+  expect_equal(result$estimator, "lin")
+  expect_equal(result$outcome_name, "Y")
+  expect_equal(result$treatment_name, "Z")
+  expect_equal(result$analysis_covariates, c("x1", "x2"))
 
-  expect_equal(result$accept_prob, 1)
-  expect_equal(result$sample_stats$criterion_type, "probability")
   expect_warning(
-    rerand_estimate(Y ~ Z + x3, data, design = design),
-    "ignored"
+    dim <- rerand_estimate(
+      inputs$data, inputs$assignment, outcome = "Y", treatment = "Z",
+      covariates = "x1", estimator = "dim"
+    ),
+    "covariates are ignored"
   )
-  data_reordered <- data[rev(seq_len(nrow(data))), ]
-  expect_equal(
-    rerand_estimate(Y ~ Z, data_reordered, design = design)$tau_hat,
-    result$tau_hat
+  expect_equal(dim$estimator, "dim")
+  expect_error(
+    rerand_estimate(inputs$data, inputs$assignment, outcome = "Y",
+                    treatment = "Z"),
+    "estimator"
   )
 })
 
-test_that("Lin follows the formula and requires adjustment covariates", {
-  data <- make_estimate_data()
-  result <- rerand_estimate(Y ~ Z + x1 + x2, data, method = "lin")
+test_that("formula mode takes priority over selector arguments", {
+  inputs <- make_estimate_data()
+  expect_warning(
+    result <- rerand_estimate(
+      inputs$data, inputs$assignment, formula = Y ~ Z,
+      outcome = "Y", treatment = "Z", estimator = "lin", covariates = "x1"
+    ),
+    "formula takes priority"
+  )
+  expect_equal(result$estimator, "dim")
+})
 
-  expect_s3_class(result, "rerand_estimate_result")
-  expect_true(is.finite(result$tau_hat))
-  expect_true(is.finite(result$se_ehw))
-  expect_s3_class(result$fit, "lm")
-  expect_error(
-    rerand_estimate(Y ~ Z, data, method = "lin"),
-    "requires at least one covariate"
+test_that("assignment and data IDs are aligned explicitly", {
+  inputs <- make_estimate_data()
+  data_reordered <- inputs$data[rev(seq_len(nrow(inputs$data))), ]
+  result <- rerand_estimate(
+    inputs$data, inputs$assignment, formula = Y ~ Z
   )
-  expect_error(
-    rerand_estimate(Y ~ Z + x1, data, method = "lin", accept_prob = 0.2),
-    "does not use"
+  reordered <- rerand_estimate(
+    data_reordered, inputs$assignment, formula = Y ~ Z
   )
-  design <- rerand_design(data, n_treat = 20, formula = ~ x1,
-                          id = "id", accept_prob = 1)
-  data$Z <- design$Z
+  expect_equal(reordered$estimate, result$estimate)
   expect_error(
-    rerand_estimate(Y ~ Z, data, design = design, method = "lin"),
-    "requires at least one covariate"
+    rerand_estimate(inputs$data, inputs$design, formula = Y ~ Z),
+    "rerand_assignment"
+  )
+  mismatched <- inputs$data
+  mismatched$Z <- rev(mismatched$Z)
+  expect_error(
+    rerand_estimate(mismatched, inputs$assignment, formula = Y ~ Z),
+    "does not match the assignment"
   )
 })
 
-test_that("formula treatment coding and low-level matrix estimation are explicit", {
-  data <- make_estimate_data()
-  data$group <- ifelse(data$Z == 1, "treated", "control")
-  factor_result <- rerand_estimate(Y ~ group + x1, data,
-                                   treated = "treated", accept_prob = 0.2)
-  matrix_result <- rerand_estimate_matrix(
-    data$Y, data$Z, as.matrix(data[, c("x1", "x2")]), accept_prob = 0.2
+test_that("formula grammar and treatment coding are validated", {
+  inputs <- make_estimate_data()
+  expect_error(
+    rerand_estimate(inputs$data, inputs$assignment, formula = Y ~ Z:x1),
+    "formula must be"
   )
-
-  expect_true(is.finite(factor_result$tau_hat))
-  expect_true(is.finite(matrix_result$tau_hat))
-  expect_error(rerand_estimate(Y ~ Z + Z:x1, data), "interactions")
-  expect_error(rerand_estimate(Y ~ group + x1, data, accept_prob = 0.2),
-               "treated must")
-})
-
-test_that("population statistics are a separate calculation", {
-  data <- make_estimate_data()
-  design <- rerand_design(data, n_treat = 20, formula = ~ x1 + x2,
-                          id = "id", accept_prob = 1)
-  population <- rerand_population_stats(cbind(data$Y0, data$Y1), design = design)
-
-  expect_equal(population$tau_true, mean(data$Y1 - data$Y0))
-  expect_true(is.finite(population$se_rem_dim))
+  expect_error(
+    rerand_estimate(inputs$data, inputs$assignment, formula = Y ~ Z + Z:x1),
+    "Treatment terms"
+  )
+  factor_data <- inputs$data
+  factor_data$group <- ifelse(factor_data$Z == 1, "treated", "control")
+  factor_data$Z <- NULL
+  expect_true(is.finite(rerand_estimate(
+    factor_data, inputs$assignment, formula = Y ~ group, treated = "treated"
+  )$estimate))
+  expect_error(
+    rerand_estimate(factor_data, inputs$assignment, formula = Y ~ group),
+    "treated must"
+  )
 })

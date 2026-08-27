@@ -82,6 +82,27 @@
   )
 }
 
+.estimate_ancova <- function(Y_obs, Z, X) {
+  if (is.null(X)) {
+    stop("X is required for method 'ancova'.", call. = FALSE)
+  }
+  X_names <- paste0("X", seq_len(ncol(X)))
+  model_data <- data.frame(Y = as.numeric(Y_obs), Z = as.numeric(Z), X)
+  names(model_data) <- c("Y", "Z", X_names)
+  formula <- stats::as.formula(paste(
+    "Y ~ Z +", paste(X_names, collapse = " + ")
+  ))
+  fit <- stats::lm(formula, data = model_data)
+  coefficient <- stats::coef(fit)["Z"]
+  if (is.na(coefficient)) {
+    stop("The ANCOVA model could not identify the treatment coefficient.",
+         call. = FALSE)
+  }
+  covariance <- sandwich::vcovHC(fit, type = "HC2")
+  se_ehw <- sqrt(covariance["Z", "Z"])
+  list(tau_hat = coefficient, se_ehw = as.numeric(se_ehw), fit = fit)
+}
+
 .estimate_lin <- function(Y_obs, Z, X) {
   if (is.null(X)) {
     stop("X is required for method 'lin'.", call. = FALSE)
