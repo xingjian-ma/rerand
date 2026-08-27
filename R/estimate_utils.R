@@ -275,28 +275,11 @@
                              names = FALSE, type = 7))
 }
 
-#' Generate a rerandomization quantile
-#'
-#' @param R2 Covariate-explained variance proportion.
-#' @param K Number of effective covariate directions.
-#' @param accept_prob Acceptance probability. Mutually exclusive with
-#'   `threshold`.
-#' @param threshold Direct Mahalanobis threshold. Mutually exclusive with
-#'   `accept_prob`.
-#' @param alpha Upper two-sided quantile level.
-#' @param method Either deterministic `"integration"` or `"simulation"`.
-#' @param integration_tol Relative numerical-integration tolerance.
-#' @param n_sim Number of simulation draws when `method = "simulation"`.
-#' @param seed Optional integer seed for simulation. Supplying a seed preserves
-#'   the caller's random-number-generator state.
-#' @param engine Simulation engine, either `"cpp"` or `"R"`.
-#' @return A numeric quantile.
-#' @export
-get_quantile <- function(R2, K, accept_prob = NULL, threshold = NULL,
-                         alpha = 0.975,
-                         method = c("integration", "simulation"),
-                         integration_tol = 1e-8, n_sim = 100000L,
-                         seed = NULL, engine = c("cpp", "R")) {
+.rerand_quantile <- function(R2, K, accept_prob = NULL, threshold = NULL,
+                             alpha = 0.975,
+                             method = c("integration", "simulation"),
+                             integration_tol = 1e-8, n_sim = 100000L,
+                             seed = NULL, engine = c("cpp", "R")) {
   inputs <- .rerand_validate_simulation_inputs(R2, K, alpha, n_sim)
   if (length(integration_tol) != 1L || !is.numeric(integration_tol) ||
       !is.finite(integration_tol) || integration_tol <= 0 ||
