@@ -40,7 +40,8 @@ rerand_design <- function(data, n_treat, formula = NULL,
       n_treat = n_treat,
       n_control = nrow(prepared$X) - n_treat,
       criterion = criterion,
-      design_method = if (criterion$acceptance_mass == 1) "cre" else "rem"
+      design_method = if (criterion$type == "probability" &&
+                          criterion$accept_prob == 1) "cre" else "rem"
     )
   )
   class(result) <- c("rerand_design", "list")

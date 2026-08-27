@@ -29,6 +29,7 @@ test_that("explicit thresholds are recorded without an inferred probability", {
   result <- rerand_assign(design)
 
   expect_equal(result$criterion_type, "threshold")
+  expect_equal(result$design_method, "rem")
   expect_null(result$accept_prob)
   expect_equal(result$threshold, 100)
   expect_true(result$accepted)

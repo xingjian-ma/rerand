@@ -154,12 +154,16 @@
     estimator <- "ancova"
   } else if (is.call(rhs) && identical(rhs[[1L]], as.name("*"))) {
     left <- .rerand_unwrap_parentheses(rhs[[2L]])
-    right <- .rerand_unwrap_parentheses(rhs[[3L]])
-    if (!is.name(left)) {
+    if (!is.name(left) || !is.call(rhs[[3L]]) ||
+        !identical(rhs[[3L]][[1L]], as.name("("))) {
       stop("Lin formulas must have the form Y ~ Z * (x1 + x2).", call. = FALSE)
     }
+    right <- .rerand_unwrap_parentheses(rhs[[3L]])
     treatment_name <- as.character(left)
     covariate_terms <- .rerand_flatten_addition(right)
+    if (length(covariate_terms) == 0L) {
+      stop("Lin formulas must include at least one covariate.", call. = FALSE)
+    }
     estimator <- "lin"
   } else {
     stop("formula must be Y ~ Z, Y ~ Z + x, or Y ~ Z * (x1 + x2).",

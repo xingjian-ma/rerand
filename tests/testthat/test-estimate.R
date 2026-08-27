@@ -112,6 +112,10 @@ test_that("formula grammar and treatment coding are validated", {
     "formula must be"
   )
   expect_error(
+    rerand_estimate(inputs$data, inputs$assignment, formula = Y ~ Z * x1),
+    "Lin formulas"
+  )
+  expect_error(
     rerand_estimate(inputs$data, inputs$assignment, formula = Y ~ Z + Z:x1),
     "Treatment terms"
   )

@@ -2,44 +2,48 @@
 % Please edit documentation in R/estimate.R
 \name{rerand_estimate}
 \alias{rerand_estimate}
-\title{Estimate an average treatment effect from a formula and data frame}
+\title{Estimate an average treatment effect from complete data and an assignment}
 \usage{
 rerand_estimate(
-  formula,
   data,
-  design = NULL,
-  method = c("dim", "lin"),
+  assignment,
+  formula = NULL,
+  outcome = NULL,
+  treatment = NULL,
+  covariates = NULL,
+  estimator = NULL,
   treated = NULL,
-  accept_prob = NULL,
-  threshold = NULL,
   se_type = NULL
 )
 }
 \arguments{
-\item{formula}{A two-sided formula. The first right-hand-side term is the
-untransformed treatment column; subsequent terms are covariates.}
+\item{data}{Complete data frame containing the observed outcome, treatment,
+and covariates.}
 
-\item{data}{Data frame containing the outcome, treatment, and covariates.}
+\item{assignment}{A \code{rerand_assignment} object created by \code{\link[=rerand_assign]{rerand_assign()}}.}
 
-\item{design}{Optional \code{rerand_design_result}. For difference-in-means it
-supplies the assignment, balance covariates, and rerandomization criterion.}
+\item{formula}{Optional canonical two-sided formula.}
 
-\item{method}{Either \code{"dim"} or \code{"lin"}.}
+\item{outcome}{Outcome column name for selector mode.}
 
-\item{treated}{Treated level for a two-level factor or character treatment.}
+\item{treatment}{Treatment column name for selector mode.}
 
-\item{accept_prob}{Acceptance probability when estimating difference-in-means
-without \code{design}. Mutually exclusive with \code{threshold}.}
+\item{covariates}{Optional adjustment covariate column names for selector
+mode.}
 
-\item{threshold}{Direct Mahalanobis threshold when estimating
-difference-in-means without \code{design}.}
+\item{estimator}{Selector-mode estimator: \code{"dim"}, \code{"ancova"}, or \code{"lin"}.}
 
-\item{se_type}{Standard error for difference-in-means: \code{"neyman"} or
-\code{"ding"}. The default is \code{"neyman"}.}
+\item{treated}{Treated level for a nonnumeric treatment column.}
+
+\item{se_type}{DIM standard error: \code{"neyman"} or \code{"ding"}; regression
+estimators use \code{"hc2"}.}
 }
 \value{
-An object of class \code{rerand_estimate_result}.
+An object of class \code{rerand_estimate}.
 }
 \description{
-Estimate an average treatment effect from a formula and data frame
+Formula mode derives the estimator from the right-hand side: \code{Y ~ Z} is
+difference-in-means, \code{Y ~ Z + x} is additive ANCOVA, and
+\code{Y ~ Z * (x1 + x2)} is Lin's fully interacted estimator. Selector mode uses
+string column names and an explicit \code{estimator}.
 }

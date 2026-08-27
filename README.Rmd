@@ -13,8 +13,9 @@ knitr::opts_chunk$set(
 # rerand
 
 The `rerand` package provides Mahalanobis rerandomization designs and
-randomization-based treatment effect estimators. The package supports both a
-readable R reference engine and a C++ engine for larger simulations.
+randomization-based treatment-effect estimators. The workflow keeps design,
+assignment, estimation, inference, comparison, and evaluation as separate
+objects.
 
 ## Installation
 
@@ -26,78 +27,88 @@ remotes::install_github("YOUR_USERNAME/rerand")
 
 ## Design and assignment
 
-`rerand_design()` accepts a numeric matrix or a data frame. For data-frame
-input, use a one-sided formula to select balance covariates; without a formula,
-every column except `id` is used. Factors and character columns are encoded
-automatically. An acceptance probability or direct threshold is required.
+Prepare a data-frame design from pretreatment covariates, then generate a
+realized assignment. A design uses either `accept_prob` or a direct
+Mahalanobis `threshold`.
 
 ```{r, eval = FALSE}
 library(rerand)
 
 set.seed(123)
-data <- data.frame(
+covariates <- data.frame(
   id = paste0("unit-", seq_len(100)),
   age = rnorm(100, 45, 12),
   site = sample(c("A", "B", "C"), 100, replace = TRUE)
 )
 
 design <- rerand_design(
-  data,
+  covariates,
   n_treat = 50,
   formula = ~ age + site,
   id = "id",
-  accept_prob = 0.1,
-  seed = 123,
-  engine = "cpp"
+  accept_prob = 0.1
 )
-
-design
-assigned_data <- as.data.frame(design)
-balance(design)
+assignment <- rerand_assign(design, seed = 123, engine = "cpp")
+assigned_data <- as.data.frame(assignment)
 ```
 
-For repeated assignment generation, prepare a reusable specification and call
-`rerand_draw()`. A direct threshold can be supplied instead of `accept_prob`.
-
-```{r, eval = FALSE}
-spec <- rerand_spec(data, n_treat = 50, formula = ~ age + site,
-                    id = "id", threshold = 1.5)
-draws <- rerand_draw(spec, n_draws = 20, seed = 42)
-```
+`rerand_design()` returns a reusable `rerand_design` object. Every estimate
+requires the corresponding `rerand_assignment`, including complete
+randomization (`accept_prob = 1`).
 
 ## Estimation
 
-`rerand_estimate()` uses a formula and a data frame. The first right-hand-side
-term is the treatment column. With `method = "dim"`, a supplied design object
-provides the assignment, balance covariates, and rerandomization criterion.
-With `method = "lin"`, the covariates in the formula are the adjustment set;
-`Y ~ Z` is intentionally rejected because it contains no adjustment covariate.
+The public estimate data must be a complete data frame containing the observed
+outcome, treatment, and any adjustment covariates. Formula mode derives the
+estimator:
 
 ```{r, eval = FALSE}
-Y0 <- 0.1 * data$age + rnorm(100)
+Y0 <- 0.1 * covariates$age + rnorm(100)
 Y1 <- Y0 + 1
-assigned_data$Y <- ifelse(assigned_data$Z == 1, Y1, Y0)
+analysis_data <- covariates
+analysis_data$Z <- assignment$Z
+analysis_data$Y <- ifelse(analysis_data$Z == 1, Y1, Y0)
 
-estimate <- rerand_estimate(
-  Y ~ Z,
-  data = assigned_data,
-  design = design,
-  method = "dim"
+dim_fit <- rerand_estimate(analysis_data, assignment, formula = Y ~ Z)
+ancova_fit <- rerand_estimate(
+  analysis_data, assignment, formula = Y ~ Z + age
 )
-
-estimate
-confint(estimate)
+lin_fit <- rerand_estimate(
+  analysis_data, assignment, formula = Y ~ Z * (age + site)
+)
 ```
 
-For Lin's fully interacted adjustment, select covariates directly in the
-formula:
+`Y ~ Z` is difference-in-means (DIM), `Y ~ Z + x` is additive ANCOVA, and
+`Y ~ Z * (x1 + x2)` is Lin's fully interacted estimator. Alternatively, use
+string selectors with an explicit `estimator = "dim"`, `"ancova"`, or `"lin"`.
+Formula mode takes priority and warns once if selector arguments are supplied
+at the same time.
+
+## Inference, comparison, and evaluation
+
+Inference inherits the design method. CRE uses a normal reference distribution;
+ReM uses the estimator's rerandomization mixture interval.
 
 ```{r, eval = FALSE}
-lin_estimate <- rerand_estimate(Y ~ Z + age + site, assigned_data,
-                                method = "lin")
+dim_inference <- rerand_inference(dim_fit)
+lin_inference <- rerand_inference(lin_fit)
+confint(dim_inference)
+
+comparison <- rerand_compare(c(dim = dim_inference, lin = lin_inference))
 ```
 
-Use `rerand_population_stats(cbind(Y0, Y1), design = design)` for
-population-level benchmarks. `get_quantile()` uses deterministic numerical
-integration by default; select `method = "simulation"` only when a simulation
-approximation is desired.
+To evaluate against finite-population truth, provide a separate two-column
+potential-outcomes data frame and map its control and treated columns:
+
+```{r, eval = FALSE}
+potential_data <- data.frame(Y0 = Y0, Y1 = Y1)
+evaluation <- rerand_evaluate(
+  comparison,
+  potential_data,
+  potential_outcomes = c(control = "Y0", treated = "Y1")
+)
+evaluation
+```
+
+The evaluation reports the true average treatment effect, signed and absolute
+errors, squared error, and confidence-interval coverage for each inference.
