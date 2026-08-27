@@ -1,6 +1,6 @@
 ---
 task: "rerand-api-inference-evaluation"
-status: in_progress
+status: complete
 created: "2026-08-28"
 updated: "2026-08-28"
 ---
@@ -111,9 +111,9 @@ The task is complete when the Commit Flow below has been completed successfully.
 
 #### Acceptance
 
-- [ ] Design and assignment preserve IDs, treatment counts, diagnostics, seeded RNG behavior, and R/C++ parity.
-- [ ] CRE and ReM classifications are correct for supported criteria.
-- [ ] Legacy design, draw, spec, and balance exports are absent.
+- [x] Design and assignment preserve IDs, treatment counts, diagnostics, seeded RNG behavior, and R/C++ parity.
+- [x] CRE and ReM classifications are correct for supported criteria.
+- [x] Legacy design, draw, spec, and balance exports are absent.
 
 #### Batch Review
 
@@ -127,9 +127,9 @@ The task is complete when the Commit Flow below has been completed successfully.
 
 #### Acceptance
 
-- [ ] Formula grammar selects the intended estimator and rejects noncanonical forms.
-- [ ] Selector and formula modes agree for equivalent analyses.
-- [ ] Treatment, assignment, ID, missing-value, and covariate validation failures are clear.
+- [x] Formula grammar selects the intended estimator and rejects noncanonical forms.
+- [x] Selector and formula modes agree for equivalent analyses.
+- [x] Treatment, assignment, ID, missing-value, and covariate validation failures are clear.
 
 #### Batch Review
 
@@ -143,10 +143,10 @@ The task is complete when the Commit Flow below has been completed successfully.
 
 #### Acceptance
 
-- [ ] CRE assignments produce normal-reference intervals for DIM, ANCOVA, and Lin.
-- [ ] ReM assignments produce estimator-specific ReM-reference intervals for DIM, ANCOVA, and Lin.
-- [ ] Inference records inherited design method, reference distribution, critical value, standard error, and CI.
-- [ ] Repeated accepted-assignment checks validate ReM critical values and coverage behavior against the implemented theory.
+- [x] CRE assignments produce normal-reference intervals for DIM, ANCOVA, and Lin.
+- [x] ReM assignments produce estimator-specific ReM-reference intervals for DIM, ANCOVA, and Lin.
+- [x] Inference records inherited design method, reference distribution, critical value, standard error, and CI.
+- [x] Repeated accepted-assignment checks validate ReM critical values and coverage behavior against the implemented theory.
 
 #### Batch Review
 
@@ -160,11 +160,11 @@ The task is complete when the Commit Flow below has been completed successfully.
 
 #### Acceptance
 
-- [ ] Comparison accepts only named, same-level, provenance-compatible inference objects.
-- [ ] Evaluation accepts one inference or a comparison, not estimates or raw assignments.
-- [ ] Evaluation derives `mean(Y1 - Y0)` from the explicitly mapped potential-outcome columns.
-- [ ] Evaluation reports true effect, signed error, absolute error, squared error, and CI coverage.
-- [ ] Invalid mappings, non-finite values, incompatible unit counts, and raw estimate inputs fail clearly.
+- [x] Comparison accepts only named, same-level, provenance-compatible inference objects.
+- [x] Evaluation accepts one inference or a comparison, not estimates or raw assignments.
+- [x] Evaluation derives `mean(Y1 - Y0)` from the explicitly mapped potential-outcome columns.
+- [x] Evaluation reports true effect, signed error, absolute error, squared error, and CI coverage.
+- [x] Invalid mappings, non-finite values, incompatible unit counts, and raw estimate inputs fail clearly.
 
 #### Batch Review
 
@@ -178,9 +178,9 @@ The task is complete when the Commit Flow below has been completed successfully.
 
 #### Acceptance
 
-- [ ] Documentation uses only the new design-aware pipeline and explains both estimation modes.
-- [ ] Targeted tests and full `testthat` pass.
-- [ ] `R CMD check` and `git diff --check` pass.
+- [x] Documentation uses only the new design-aware pipeline and explains both estimation modes.
+- [x] Targeted tests and full `testthat` pass.
+- [x] `R CMD check` and `git diff --check` pass.
 
 #### Batch Review
 
@@ -195,10 +195,10 @@ The task is complete when the Commit Flow below has been completed successfully.
 
 #### Acceptance
 
-- [ ] `design.R` and `assign.R` have separate design and assignment responsibilities.
-- [ ] The test suite has one topic per file (`design`, `assign`, `estimate`, `inference`, `compare`, `evaluate`) and one test block per file.
-- [ ] The complete pipeline smoke test passes without changing the plan or creating compatibility aliases.
-- [ ] Full testthat, package checks, and documentation checks pass.
+- [x] `design.R` and `assign.R` have separate design and assignment responsibilities.
+- [x] The test suite has one topic per file (`design`, `assign`, `estimate`, `inference`, `compare`, `evaluate`) and one test block per file.
+- [x] The complete pipeline smoke test passes without changing the plan or creating compatibility aliases.
+- [x] Full testthat, package checks, and documentation checks pass.
 
 #### Batch Review
 
@@ -210,10 +210,10 @@ The task is complete when the Commit Flow below has been completed successfully.
 
 #### Total Acceptance
 
-- [ ] All batches are complete, reviewed, and recorded.
-- [ ] Full tests, `R CMD check`, and documentation checks pass.
-- [ ] Automatic review is completed and recorded.
-- [ ] User approval includes the latest functional commit SHA.
+- [x] All batches are complete, reviewed, and recorded.
+- [x] Full tests, `R CMD check`, and documentation checks pass.
+- [x] Automatic review is completed and recorded.
+- [x] User approval includes the latest functional commit SHA.
 
 #### Automatic Review
 
@@ -222,6 +222,6 @@ The task is complete when the Commit Flow below has been completed successfully.
 
 #### User Review
 
-- **Result:** `pending`
-- **Timestamp:** recorded after manual approval.
-- **Approved Commit SHA:** pending
+- **Result:** `passed`
+- **Timestamp:** `2026-08-28T01:38:29+08:00`
+- **Approved Commit SHA:** `4295dfb`
