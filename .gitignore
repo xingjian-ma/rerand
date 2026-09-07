@@ -2,15 +2,10 @@
 # R environment / session files (local only)
 # --------------------------------------------------------------------
 .Rproj.user
+.Rproj.user/
 .Rhistory
 .RData
 .Ruserdata
-
-# --------------------------------------------------------------------
-# RStudio project files
-# --------------------------------------------------------------------
-*.Rproj
-.Rproj.user/
 
 # --------------------------------------------------------------------
 # Compiled code / binary artifacts
@@ -54,6 +49,3 @@ tests/testthat.Rout.*
 # --------------------------------------------------------------------
 .DS_Store
 Thumbs.db
-
-# Local agent notes
-AGENTS.md
