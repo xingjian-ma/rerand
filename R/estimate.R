@@ -23,9 +23,7 @@
 rerand_estimate <- function(data, assignment, formula = NULL, outcome = NULL,
                             treatment = NULL, covariates = NULL,
                             estimator = NULL, treated = NULL, se_type = NULL) {
-  if (!is.data.frame(data)) {
-    stop("data must be a data frame.", call. = FALSE)
-  }
+  .validate_data_frame(data)
   selector_supplied <- !is.null(outcome) || !is.null(treatment) ||
     !is.null(covariates) || !is.null(estimator)
   if (!is.null(formula)) {
@@ -281,7 +279,7 @@ vcov.rerand_estimate <- function(object, ...) {
 
 .rerand_parse_treatment <- function(treatment, data, treated = NULL) {
   if (is.numeric(treatment)) {
-    return(.rerand_validate_assignment(treatment, nrow(data), min_group_size = 2L))
+    return(.validate_assignment(treatment, nrow(data), min_group_size = 2L))
   }
   if (!(is.factor(treatment) || is.character(treatment)) || anyNA(treatment)) {
     stop("The treatment column must be binary numeric, factor, or character.",
@@ -296,7 +294,7 @@ vcov.rerand_estimate <- function(object, ...) {
     stop("treated must identify one observed treatment level for nonnumeric treatment.",
          call. = FALSE)
   }
-  .rerand_validate_assignment(
+  .validate_assignment(
     as.numeric(as.character(treatment) == as.character(treated)),
     nrow(data), min_group_size = 2L
   )
@@ -357,7 +355,7 @@ vcov.rerand_estimate <- function(object, ...) {
   }
   parsed_treatment <- .rerand_parse_treatment(data[[treatment_name]], data, treated)
   Y_obs <- data[[as.character(response)]]
-  .rerand_assert_finite_numeric(Y_obs, "The outcome column")
+  .validate_finite_numeric(Y_obs, "The outcome column")
   list(
     Y_obs = as.numeric(Y_obs),
     Z = parsed_treatment$Z,
@@ -393,7 +391,7 @@ vcov.rerand_estimate <- function(object, ...) {
   }
   parsed_treatment <- .rerand_parse_treatment(data[[treatment]], data, treated)
   Y_obs <- data[[outcome]]
-  .rerand_assert_finite_numeric(Y_obs, "The outcome column")
+  .validate_finite_numeric(Y_obs, "The outcome column")
   covariate_formula <- if (length(covariates) == 0L) {
     NULL
   } else {
@@ -413,7 +411,7 @@ vcov.rerand_estimate <- function(object, ...) {
 # Internal estimator helpers.
 
 .calc_sample_stats <- function(Y_obs, Z, X, criterion) {
-  assignment <- .rerand_validate_assignment(Z, length(Y_obs), min_group_size = 2L)
+  assignment <- .validate_assignment(Z, length(Y_obs), min_group_size = 2L)
   Y1 <- Y_obs[assignment$Z == 1]
   Y0 <- Y_obs[assignment$Z == 0]
   n <- length(Y_obs)

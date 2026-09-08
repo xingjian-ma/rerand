@@ -1,7 +1,7 @@
 # Internal criterion and covariance helpers.
 
 .rerand_covariance <- function(X, tol = 1e-10) {
-  X <- .rerand_validate_matrix(X)
+  X <- .validate_matrix(X)
   X_centered <- scale(X, center = TRUE, scale = FALSE)
   rank <- qr(X_centered, tol = tol)$rank
   if (rank < 1L) {

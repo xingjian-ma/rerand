@@ -20,11 +20,9 @@
 rerand_design <- function(data, n_treat, formula = NULL,
                           accept_prob = NULL, threshold = NULL,
                           id = NULL, tol = 1e-10) {
-  if (!is.data.frame(data)) {
-    stop("data must be a data frame.", call. = FALSE)
-  }
+  .validate_data_frame(data)
   prepared <- .rerand_prepare_covariates(data, formula = formula, id = id)
-  n_treat <- .rerand_validate_n_treat(n_treat, nrow(prepared$X))
+  n_treat <- .validate_n_treat(n_treat, nrow(prepared$X))
   transformed <- .rerand_whiten_covariates(prepared$X, tol = tol)
   criterion <- .rerand_resolve_criterion(
     accept_prob = accept_prob,

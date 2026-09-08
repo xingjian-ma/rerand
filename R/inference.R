@@ -11,19 +11,7 @@
 #' @return An object of class `rerand_inference`.
 #' @export
 rerand_inference <- function(estimate, level = 0.95, integration_tol = 1e-8) {
-  if (!inherits(estimate, "rerand_estimate")) {
-    stop("estimate must be a rerand_estimate object.", call. = FALSE)
-  }
-  if (length(level) != 1L || !is.numeric(level) || !is.finite(level) ||
-      level <= 0 || level >= 1) {
-    stop("level must be strictly between 0 and 1.", call. = FALSE)
-  }
-  if (length(integration_tol) != 1L || !is.numeric(integration_tol) ||
-      !is.finite(integration_tol) || integration_tol <= 0 ||
-      integration_tol >= 1) {
-    stop("integration_tol must be a finite number strictly between 0 and 1.",
-         call. = FALSE)
-  }
+  .validate_inference_inputs(estimate, level, integration_tol)
 
   level <- as.numeric(level)
   alpha <- (1 + level) / 2
@@ -239,7 +227,7 @@ print.summary.rerand_inference <- function(x, ...) {
                              method = c("integration", "simulation"),
                              integration_tol = 1e-8, n_sim = 100000L,
                              seed = NULL, engine = c("cpp", "R")) {
-  inputs <- .rerand_validate_simulation_inputs(R2, K, alpha, n_sim)
+  inputs <- .validate_simulation_inputs(R2, K, alpha, n_sim)
   if (length(integration_tol) != 1L || !is.numeric(integration_tol) ||
       !is.finite(integration_tol) || integration_tol <= 0 ||
       integration_tol >= 1) {
@@ -247,7 +235,7 @@ print.summary.rerand_inference <- function(x, ...) {
          call. = FALSE)
   }
   method <- match.arg(method)
-  engine <- .rerand_validate_engine(match.arg(engine))
+  engine <- .validate_engine(match.arg(engine))
   criterion <- .rerand_resolve_criterion(
     accept_prob = accept_prob, threshold = threshold, K = inputs$K,
     require_criterion = TRUE
@@ -258,7 +246,7 @@ print.summary.rerand_inference <- function(x, ...) {
     ))
   }
   .rerand_with_seed(
-    .rerand_validate_seed(seed),
+    .validate_seed(seed),
     .rerand_quantile_simulation(
       inputs$R2, inputs$K, criterion, inputs$alpha, inputs$n_sim, engine
     )

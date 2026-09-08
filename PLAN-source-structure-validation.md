@@ -90,9 +90,15 @@ Use the current working directory; do not create a new worktree.
 
 #### Acceptance
 
-- [ ] Public APIs preserve existing rejection and warning behavior.
-- [ ] Validation helpers are named `.validate_*` and live in `validate.R`.
-- [ ] Targeted tests pass.
+- [x] Public APIs preserve existing rejection and warning behavior.
+- [x] Validation helpers are named `.validate_*` and live in `validate.R`.
+- [x] Targeted tests pass.
+
+#### Batch Review
+
+- **Result:** `passed`
+- **Timestamp:** `2026-09-07T20:45:00-04:00`
+- **Checks:** `testthat::test_local(".")` passed for all six test files.
 
 ### Batch 2: Consolidate internal helpers
 

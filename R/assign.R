@@ -22,12 +22,12 @@ rerand_assign <- function(design, n_draws = 1L, max_tries = NULL,
   if (!inherits(design, "rerand_design")) {
     stop("design must be a rerand_design object.", call. = FALSE)
   }
-  n_draws <- .rerand_validate_n_draws(n_draws)
+  n_draws <- .validate_n_draws(n_draws)
   max_tries <- .rerand_resolve_max_tries(
     max_tries, design$criterion$acceptance_mass, failure_prob
   )
-  seed <- .rerand_validate_seed(seed)
-  engine <- .rerand_validate_engine(match.arg(engine))
+  seed <- .validate_seed(seed)
+  engine <- .validate_engine(match.arg(engine))
   on_failure <- match.arg(on_failure)
 
   draw_one <- function() {

@@ -56,7 +56,7 @@
     formula <- stats::reformulate(selected)
     environment(formula) <- parent.frame()
   } else {
-    formula <- .rerand_validate_one_sided_formula(formula)
+    formula <- .validate_one_sided_formula(formula)
     variables <- all.vars(formula)
     missing_variables <- setdiff(variables, names(data_frame))
     if (length(missing_variables) > 0L) {
@@ -122,7 +122,7 @@
 
 .rerand_prepare_covariates <- function(data, formula = NULL, id = NULL) {
   if (is.matrix(data)) {
-    data <- .rerand_validate_matrix(data, name = "data")
+    data <- .validate_matrix(data, name = "data")
     if (!is.null(id)) {
       stop("id is only supported when data is a data frame.", call. = FALSE)
     }
@@ -173,7 +173,7 @@
   if (any(!nzchar(names(data))) || anyDuplicated(names(data))) {
     stop("data must have unique, non-empty column names.", call. = FALSE)
   }
-  id_info <- .rerand_validate_id(data, id)
+  id_info <- .validate_id(data, id)
   prepared <- .rerand_prepare_model_matrix(
     data_frame = data,
     formula = formula,
@@ -193,8 +193,8 @@
 }
 
 .rerand_whiten_covariates <- function(X, tol = 1e-10) {
-  X <- .rerand_validate_matrix(X)
-  tol <- .rerand_validate_tol(tol)
+  X <- .validate_matrix(X)
+  tol <- .validate_tol(tol)
   centered <- scale(X, center = TRUE, scale = FALSE)
   decomposition <- svd(centered, nu = 0L, nv = min(dim(centered)))
   if (length(decomposition$d) == 0L || decomposition$d[1L] == 0) {
