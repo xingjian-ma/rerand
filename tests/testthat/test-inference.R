@@ -70,7 +70,7 @@ test_that("inference uses design-aware references and validates levels", {
   )$criterion
   set.seed(22)
   before <- .Random.seed
-  simulated <- rerand:::.rerand_quantile(
+  simulated <- rerand:::.quantile(
     R2 = 0.4, K = criterion$K, threshold = criterion$threshold,
     alpha = 0.975, method = "simulation", n_sim = 1000,
     seed = 9, engine = "R"

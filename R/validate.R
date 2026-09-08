@@ -178,3 +178,73 @@
   }
   invisible(TRUE)
 }
+
+.validate_inference_collection <- function(collection) {
+  if (!inherits(collection, "rerand_inference_collection")) {
+    stop("inferences must be created with c.rerand_inference().", call. = FALSE)
+  }
+  inferences <- collection$inferences
+  if (!is.list(inferences) || length(inferences) < 2L ||
+      any(!vapply(inferences, inherits, logical(1), "rerand_inference"))) {
+    stop("at least two rerand_inference objects are required.", call. = FALSE)
+  }
+  object_names <- names(inferences)
+  if (is.null(object_names) || anyNA(object_names) || any(!nzchar(object_names)) ||
+      anyDuplicated(object_names)) {
+    stop("inferences must be named with unique, non-empty method names.",
+         call. = FALSE)
+  }
+  inferences
+}
+
+.validate_provenance_compatible <- function(reference, candidate) {
+  fields <- c("n", "Z", "unit_id", "design_method", "criterion_type",
+              "accept_prob", "threshold", "n_treat")
+  for (field in fields) {
+    if (!isTRUE(all.equal(reference[[field]], candidate[[field]]))) {
+      stop("inference objects must share assignment and design provenance.",
+           call. = FALSE)
+    }
+  }
+  invisible(TRUE)
+}
+
+.validate_inference_objects <- function(dots) {
+  if (length(dots) == 0L || any(!vapply(dots, inherits, logical(1),
+                                        "rerand_inference"))) {
+    stop("all objects must be rerand_inference objects.", call. = FALSE)
+  }
+  invisible(dots)
+}
+
+.validate_confidence_levels <- function(levels) {
+  if (any(abs(levels - levels[[1L]]) > 1e-12)) {
+    stop("inference objects must use the same confidence level.", call. = FALSE)
+  }
+  invisible(levels)
+}
+
+.validate_criterion_inputs <- function(accept_prob = NULL, threshold = NULL,
+                                       K, require_criterion = TRUE) {
+  if (length(K) != 1L || !is.numeric(K) || K < 1 || K != as.integer(K)) {
+    stop("K must be a positive integer.", call. = FALSE)
+  }
+  if (is.null(accept_prob) && is.null(threshold) && require_criterion) {
+    stop("Exactly one of accept_prob or threshold must be supplied.",
+         call. = FALSE)
+  }
+  if (!is.null(accept_prob) && !is.null(threshold)) {
+    stop("accept_prob and threshold are mutually exclusive.", call. = FALSE)
+  }
+  if (!is.null(accept_prob) &&
+      (length(accept_prob) != 1L || !is.numeric(accept_prob) ||
+       !is.finite(accept_prob) || accept_prob <= 0 || accept_prob > 1)) {
+    stop("accept_prob must be a finite number in (0, 1].", call. = FALSE)
+  }
+  if (!is.null(threshold) &&
+      (length(threshold) != 1L || !is.numeric(threshold) ||
+       !is.finite(threshold) || threshold <= 0)) {
+    stop("threshold must be a finite positive number.", call. = FALSE)
+  }
+  invisible(TRUE)
+}

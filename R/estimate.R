@@ -31,22 +31,22 @@ rerand_estimate <- function(data, assignment, formula = NULL, outcome = NULL,
       warning("formula takes priority; selector arguments and estimator were ignored.",
               call. = FALSE)
     }
-    parsed <- .rerand_parse_formula(formula, data, treated = treated)
+    parsed <- .parse_formula(formula, data, treated = treated)
   } else {
-    parsed <- .rerand_parse_selectors(
+    parsed <- .parse_selectors(
       data = data, outcome = outcome, treatment = treatment,
       covariates = covariates, estimator = estimator, treated = treated
     )
   }
-  assignment_z <- .rerand_assignment_vector(assignment, data)
+  assignment_z <- .assignment_vector(assignment, data)
   if (!isTRUE(all.equal(as.numeric(parsed$Z), as.numeric(assignment_z)))) {
     stop("The treatment column in data does not match the assignment.",
          call. = FALSE)
   }
   design <- assignment$design
   criterion <- design$criterion
-  design_X <- .rerand_design_covariates(assignment, data)
-  analysis_X <- .rerand_prepare_estimation_covariates(
+  design_X <- .design_covariates(assignment, data)
+  analysis_X <- .prepare_estimation_covariates(
     data, parsed$covariate_formula
   )
   if (parsed$estimator == "dim") {
@@ -66,7 +66,7 @@ rerand_estimate <- function(data, assignment, formula = NULL, outcome = NULL,
     estimate <- .estimate_lin(parsed$Y_obs, assignment_z, analysis_X)
     sample_stats <- NULL
   }
-  .rerand_estimate_result(
+  .estimate_result(
     estimate = estimate, estimator = parsed$estimator,
     sample_stats = sample_stats, criterion = criterion, se_type = se_type,
     formula = if (is.null(formula)) NULL else formula,
@@ -76,7 +76,36 @@ rerand_estimate <- function(data, assignment, formula = NULL, outcome = NULL,
   )
 }
 
-.rerand_estimate_result <- function(estimate, estimator, sample_stats, criterion,
+.covariance <- function(X, tol = 1e-10) {
+  X <- .validate_matrix(X)
+  X_centered <- scale(X, center = TRUE, scale = FALSE)
+  rank <- qr(X_centered, tol = tol)$rank
+  if (rank < 1L) {
+    stop("X must contain at least one non-constant covariate direction.",
+         call. = FALSE)
+  }
+  covariance <- stats::cov(X)
+  inverse <- MASS::ginv(covariance, tol = tol)
+  list(X = X, centered = X_centered, covariance = covariance,
+       inverse = inverse, rank = rank)
+}
+
+.correction_factor <- function(R2, criterion) {
+  factor <- 1 - (1 - criterion$v_K_a) * R2
+  if (!is.finite(factor) || factor < -1e-10) {
+    stop("The rerandomization correction factor is invalid.", call. = FALSE)
+  }
+  max(0, factor)
+}
+
+.clamp_variance <- function(x, tolerance = 1e-10) {
+  if (!is.finite(x) || x < -tolerance) {
+    stop("A variance calculation produced an invalid value.", call. = FALSE)
+  }
+  max(0, as.numeric(x))
+}
+
+.estimate_result <- function(estimate, estimator, sample_stats, criterion,
                                     se_type, formula, outcome_name,
                                     treatment_name, assignment, data,
                                     analysis_covariates) {
@@ -175,25 +204,25 @@ vcov.rerand_estimate <- function(object, ...) {
 
 # Internal data and formula preparation helpers.
 
-.rerand_flatten_addition <- function(expression) {
+.flatten_addition <- function(expression) {
   if (is.call(expression) && identical(expression[[1L]], as.name("+"))) {
     c(
-      .rerand_flatten_addition(expression[[2L]]),
-      .rerand_flatten_addition(expression[[3L]])
+      .flatten_addition(expression[[2L]]),
+      .flatten_addition(expression[[3L]])
     )
   } else {
     list(expression)
   }
 }
 
-.rerand_unwrap_parentheses <- function(expression) {
+.unwrap_parentheses <- function(expression) {
   while (is.call(expression) && identical(expression[[1L]], as.name("("))) {
     expression <- expression[[2L]]
   }
   expression
 }
 
-.rerand_make_covariate_formula <- function(terms, environment) {
+.make_covariate_formula <- function(terms, environment) {
   if (length(terms) == 0L) {
     return(NULL)
   }
@@ -201,27 +230,7 @@ vcov.rerand_estimate <- function(object, ...) {
   stats::as.formula(call("~", rhs), env = environment)
 }
 
-.rerand_validate_column_selector <- function(selector, name, data) {
-  if (length(selector) != 1L || !is.character(selector) || is.na(selector) ||
-      !nzchar(selector) || !selector %in% names(data)) {
-    stop(sprintf("%s must name one column in data.", name), call. = FALSE)
-  }
-  selector
-}
-
-.rerand_validate_covariate_selectors <- function(covariates, data) {
-  if (is.null(covariates)) {
-    return(character())
-  }
-  if (!is.character(covariates) || anyNA(covariates) ||
-      any(!nzchar(covariates)) || anyDuplicated(covariates) ||
-      any(!covariates %in% names(data))) {
-    stop("covariates must contain unique, existing column names.", call. = FALSE)
-  }
-  covariates
-}
-
-.rerand_assignment_vector <- function(assignment, data) {
+.assignment_vector <- function(assignment, data) {
   if (!inherits(assignment, "rerand_assignment")) {
     stop("assignment must be a rerand_assignment object.", call. = FALSE)
   }
@@ -256,7 +265,7 @@ vcov.rerand_estimate <- function(object, ...) {
   assignment$Z
 }
 
-.rerand_design_covariates <- function(assignment, data) {
+.design_covariates <- function(assignment, data) {
   design <- assignment$design
   if (!is.null(design$id_name)) {
     ids <- data[[design$id_name]]
@@ -266,18 +275,18 @@ vcov.rerand_estimate <- function(object, ...) {
   design$X
 }
 
-.rerand_prepare_estimation_covariates <- function(data, covariate_formula) {
+.prepare_estimation_covariates <- function(data, covariate_formula) {
   if (is.null(covariate_formula)) {
     return(NULL)
   }
-  .rerand_prepare_model_matrix(
+  .prepare_model_matrix(
     data_frame = data,
     formula = covariate_formula,
     formula_missing = FALSE
   )$matrix
 }
 
-.rerand_parse_treatment <- function(treatment, data, treated = NULL) {
+.parse_treatment <- function(treatment, data, treated = NULL) {
   if (is.numeric(treatment)) {
     return(.validate_assignment(treatment, nrow(data), min_group_size = 2L))
   }
@@ -300,7 +309,7 @@ vcov.rerand_estimate <- function(object, ...) {
   )
 }
 
-.rerand_parse_formula <- function(formula, data, treated = NULL) {
+.parse_formula <- function(formula, data, treated = NULL) {
   if (!inherits(formula, "formula") || length(formula) != 3L) {
     stop("formula must be a two-sided formula.", call. = FALSE)
   }
@@ -311,7 +320,7 @@ vcov.rerand_estimate <- function(object, ...) {
   if (!is.name(response) || !as.character(response) %in% names(data)) {
     stop("The formula response must be one column in data.", call. = FALSE)
   }
-  rhs <- .rerand_unwrap_parentheses(formula[[3L]])
+  rhs <- .unwrap_parentheses(formula[[3L]])
   estimator <- NULL
   treatment_name <- NULL
   covariate_terms <- list()
@@ -319,7 +328,7 @@ vcov.rerand_estimate <- function(object, ...) {
     treatment_name <- as.character(rhs)
     estimator <- "dim"
   } else if (is.call(rhs) && identical(rhs[[1L]], as.name("+"))) {
-    terms <- .rerand_flatten_addition(rhs)
+    terms <- .flatten_addition(rhs)
     if (length(terms) < 1L || !is.name(terms[[1L]])) {
       stop("The first right-hand-side term must be an untransformed treatment column.",
            call. = FALSE)
@@ -328,14 +337,14 @@ vcov.rerand_estimate <- function(object, ...) {
     covariate_terms <- terms[-1L]
     estimator <- "ancova"
   } else if (is.call(rhs) && identical(rhs[[1L]], as.name("*"))) {
-    left <- .rerand_unwrap_parentheses(rhs[[2L]])
+    left <- .unwrap_parentheses(rhs[[2L]])
     if (!is.name(left) || !is.call(rhs[[3L]]) ||
         !identical(rhs[[3L]][[1L]], as.name("("))) {
       stop("Lin formulas must have the form Y ~ Z * (x1 + x2).", call. = FALSE)
     }
-    right <- .rerand_unwrap_parentheses(rhs[[3L]])
+    right <- .unwrap_parentheses(rhs[[3L]])
     treatment_name <- as.character(left)
-    covariate_terms <- .rerand_flatten_addition(right)
+    covariate_terms <- .flatten_addition(right)
     if (length(covariate_terms) == 0L) {
       stop("Lin formulas must include at least one covariate.", call. = FALSE)
     }
@@ -353,7 +362,7 @@ vcov.rerand_estimate <- function(object, ...) {
     stop("Treatment terms may not appear among the adjustment covariates.",
          call. = FALSE)
   }
-  parsed_treatment <- .rerand_parse_treatment(data[[treatment_name]], data, treated)
+  parsed_treatment <- .parse_treatment(data[[treatment_name]], data, treated)
   Y_obs <- data[[as.character(response)]]
   .validate_finite_numeric(Y_obs, "The outcome column")
   list(
@@ -361,7 +370,7 @@ vcov.rerand_estimate <- function(object, ...) {
     Z = parsed_treatment$Z,
     outcome_name = as.character(response),
     treatment_name = treatment_name,
-    covariate_formula = .rerand_make_covariate_formula(
+    covariate_formula = .make_covariate_formula(
       covariate_terms, environment(formula)
     ),
     has_covariates = length(covariate_terms) > 0L,
@@ -369,7 +378,7 @@ vcov.rerand_estimate <- function(object, ...) {
   )
 }
 
-.rerand_parse_selectors <- function(data, outcome, treatment, covariates,
+.parse_selectors <- function(data, outcome, treatment, covariates,
                                     estimator, treated = NULL) {
   if (!is.data.frame(data)) {
     stop("data must be a data frame.", call. = FALSE)
@@ -378,9 +387,9 @@ vcov.rerand_estimate <- function(object, ...) {
       is.na(estimator) || !estimator %in% c("dim", "ancova", "lin")) {
     stop("estimator must be one of 'dim', 'ancova', or 'lin'.", call. = FALSE)
   }
-  outcome <- .rerand_validate_column_selector(outcome, "outcome", data)
-  treatment <- .rerand_validate_column_selector(treatment, "treatment", data)
-  covariates <- .rerand_validate_covariate_selectors(covariates, data)
+  outcome <- .validate_column_selector(outcome, "outcome", data)
+  treatment <- .validate_column_selector(treatment, "treatment", data)
+  covariates <- .validate_covariate_selectors(covariates, data)
   if (outcome == treatment || treatment %in% covariates || outcome %in% covariates) {
     stop("outcome, treatment, and covariates must be distinct columns.",
          call. = FALSE)
@@ -389,7 +398,7 @@ vcov.rerand_estimate <- function(object, ...) {
     stop(sprintf("estimator = '%s' requires at least one covariate.", estimator),
          call. = FALSE)
   }
-  parsed_treatment <- .rerand_parse_treatment(data[[treatment]], data, treated)
+  parsed_treatment <- .parse_treatment(data[[treatment]], data, treated)
   Y_obs <- data[[outcome]]
   .validate_finite_numeric(Y_obs, "The outcome column")
   covariate_formula <- if (length(covariates) == 0L) {
@@ -429,7 +438,7 @@ vcov.rerand_estimate <- function(object, ...) {
     r1 = r1,
     r0 = r0,
     tau_dim = as.numeric(tau_dim),
-    V_tt_hat_1 = .rerand_clamp_variance(V_tt_hat_1),
+    V_tt_hat_1 = .clamp_variance(V_tt_hat_1),
     V_tt_hat_2 = NULL,
     R2_hat = NULL,
     v_K_a = NULL,
@@ -445,7 +454,7 @@ vcov.rerand_estimate <- function(object, ...) {
     return(base)
   }
 
-  covariance <- .rerand_covariance(X)
+  covariance <- .covariance(X)
   X1 <- X[assignment$Z == 1, , drop = FALSE]
   X0 <- X[assignment$Z == 0, , drop = FALSE]
   S_inv <- covariance$inverse
@@ -453,7 +462,7 @@ vcov.rerand_estimate <- function(object, ...) {
   S_Y1X <- matrix(stats::cov(Y1, X1), nrow = 1L)
   S_Y0X <- matrix(stats::cov(Y0, X0), nrow = 1L)
   S_tauX <- as.numeric((S_Y1X - S_Y0X) %*% S_inv %*% t(S_Y1X - S_Y0X))
-  V_tt_hat_2 <- .rerand_clamp_variance(base$V_tt_hat_1 - S_tauX)
+  V_tt_hat_2 <- .clamp_variance(base$V_tt_hat_1 - S_tauX)
 
   S_Y1_given_X <- as.numeric(S_Y1X %*% S_inv %*% t(S_Y1X))
   S_Y0_given_X <- as.numeric(S_Y0X %*% S_inv %*% t(S_Y0X))
@@ -467,7 +476,7 @@ vcov.rerand_estimate <- function(object, ...) {
     stop("The sample R2 estimate is outside its valid range.", call. = FALSE)
   }
   R2_hat <- min(1, max(0, R2_hat))
-  correction_factor <- .rerand_correction_factor(R2_hat, criterion)
+  correction_factor <- .correction_factor(R2_hat, criterion)
 
   base$V_tt_hat_2 <- V_tt_hat_2
   base$R2_hat <- as.numeric(R2_hat)

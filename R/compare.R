@@ -1,24 +1,6 @@
 # Internal inference collection and comparison helpers.
 
-.rerand_validate_inference_collection <- function(collection) {
-  if (!inherits(collection, "rerand_inference_collection")) {
-    stop("inferences must be created with c.rerand_inference().", call. = FALSE)
-  }
-  inferences <- collection$inferences
-  if (!is.list(inferences) || length(inferences) < 2L ||
-      any(!vapply(inferences, inherits, logical(1), "rerand_inference"))) {
-    stop("at least two rerand_inference objects are required.", call. = FALSE)
-  }
-  object_names <- names(inferences)
-  if (is.null(object_names) || anyNA(object_names) || any(!nzchar(object_names)) ||
-      anyDuplicated(object_names)) {
-    stop("inferences must be named with unique, non-empty method names.",
-         call. = FALSE)
-  }
-  inferences
-}
-
-.rerand_inference_provenance <- function(inference) {
+.inference_provenance <- function(inference) {
   estimate <- inference$estimate
   assignment <- estimate$assignment
   design <- assignment$design
@@ -34,20 +16,6 @@
   )
 }
 
-.rerand_assert_provenance_compatible <- function(reference, candidate) {
-  fields <- c(
-    "n", "Z", "unit_id", "design_method", "criterion_type",
-    "accept_prob", "threshold", "n_treat"
-  )
-  for (field in fields) {
-    if (!isTRUE(all.equal(reference[[field]], candidate[[field]]))) {
-      stop("inference objects must share assignment and design provenance.",
-           call. = FALSE)
-    }
-  }
-  invisible(TRUE)
-}
-
 #' Combine inference objects for comparison
 #'
 #' @param ... Named `rerand_inference` objects.
@@ -59,10 +27,7 @@ c.rerand_inference <- function(..., recursive = FALSE) {
   if (length(dots) == 1L && inherits(dots[[1L]], "rerand_inference_collection")) {
     return(dots[[1L]])
   }
-  if (length(dots) == 0L || any(!vapply(dots, inherits, logical(1),
-                                        "rerand_inference"))) {
-    stop("all objects must be rerand_inference objects.", call. = FALSE)
-  }
+  .validate_inference_objects(dots)
   object_names <- names(dots)
   if (is.null(object_names)) {
     object_names <- rep("", length(dots))
@@ -79,15 +44,13 @@ c.rerand_inference <- function(..., recursive = FALSE) {
 #' @return An object of class `rerand_compare`.
 #' @export
 rerand_compare <- function(inferences) {
-  inferences <- .rerand_validate_inference_collection(inferences)
-  reference <- .rerand_inference_provenance(inferences[[1L]])
+  inferences <- .validate_inference_collection(inferences)
+  reference <- .inference_provenance(inferences[[1L]])
   levels <- vapply(inferences, function(x) x$level, numeric(1))
-  if (any(abs(levels - levels[[1L]]) > 1e-12)) {
-    stop("inference objects must use the same confidence level.", call. = FALSE)
-  }
+  .validate_confidence_levels(levels)
   for (inference in inferences[-1L]) {
-    .rerand_assert_provenance_compatible(
-      reference, .rerand_inference_provenance(inference)
+    .validate_provenance_compatible(
+      reference, .inference_provenance(inference)
     )
   }
   object_names <- names(inferences)

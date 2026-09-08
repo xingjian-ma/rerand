@@ -109,9 +109,15 @@ Use the current working directory; do not create a new worktree.
 
 #### Acceptance
 
-- [ ] `data_utils.R`, `criterion.R`, `design_utils.R`, and `validation.R` are removed.
-- [ ] No private `.rerand_*` helper definitions or calls remain.
-- [ ] Full testthat suite passes.
+- [x] `data_utils.R`, `criterion.R`, `design_utils.R`, and `validation.R` are removed.
+- [x] No private `.rerand_*` helper definitions or calls remain.
+- [x] Full testthat suite passes.
+
+#### Batch Review
+
+- **Result:** `passed`
+- **Timestamp:** `2026-09-07T20:55:00-04:00`
+- **Checks:** `testthat::test_local(".")` passed for all six test files; `git diff --check` passed.
 
 ### Final acceptance
 

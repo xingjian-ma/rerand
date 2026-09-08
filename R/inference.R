@@ -22,10 +22,10 @@ rerand_inference <- function(estimate, level = 0.95, integration_tol = 1e-8) {
 
   r2_stats <- if (design_method == "rem" && estimate$estimator != "dim") {
     assignment <- estimate$assignment
-    design_X <- .rerand_design_covariates(assignment, estimate$data)
+    design_X <- .design_covariates(assignment, estimate$data)
     .calc_sample_stats(
       Y_obs = estimate$data[[estimate$outcome_name]],
-      Z = .rerand_assignment_vector(assignment, estimate$data),
+      Z = .assignment_vector(assignment, estimate$data),
       X = design_X,
       criterion = assignment$design$criterion
     )
@@ -44,7 +44,7 @@ rerand_inference <- function(estimate, level = 0.95, integration_tol = 1e-8) {
     }
     reference_distribution <- "rem"
     criterion <- estimate$assignment$design$criterion
-    critical_value <- .rerand_quantile_integration(
+    critical_value <- .quantile_integration(
       R2 = r2_stats$R2_hat,
       K = criterion$K,
       criterion = criterion,
@@ -127,7 +127,7 @@ print.summary.rerand_inference <- function(x, ...) {
 
 # Internal rerandomization reference-quantile helpers.
 
-.rerand_truncated_d1_density <- function(x, K, threshold, acceptance_mass) {
+.truncated_d1_density <- function(x, K, threshold, acceptance_mass) {
   inside <- abs(x) <= sqrt(threshold)
   result <- numeric(length(x))
   if (!any(inside)) {
@@ -142,12 +142,12 @@ print.summary.rerand_inference <- function(x, ...) {
   result
 }
 
-.rerand_integrate_d1 <- function(function_to_integrate, K, criterion,
+.integrate_d1 <- function(function_to_integrate, K, criterion,
                                  integration_tol) {
   limit <- sqrt(criterion$threshold)
   stats::integrate(
     function(x) {
-      function_to_integrate(x) * .rerand_truncated_d1_density(
+      function_to_integrate(x) * .truncated_d1_density(
         x, K = K, threshold = criterion$threshold,
         acceptance_mass = criterion$acceptance_mass
       )
@@ -159,7 +159,7 @@ print.summary.rerand_inference <- function(x, ...) {
   )$value
 }
 
-.rerand_quantile_integration <- function(R2, K, criterion, alpha,
+.quantile_integration <- function(R2, K, criterion, alpha,
                                          integration_tol) {
   if (criterion$acceptance_mass == 1) {
     return(stats::qnorm(alpha))
@@ -172,7 +172,7 @@ print.summary.rerand_inference <- function(x, ...) {
     cdf <- function(value) {
       if (value <= -limit) return(0)
       if (value >= limit) return(1)
-      .rerand_integrate_d1(
+      .integrate_d1(
         function(x) as.numeric(x <= value), K, criterion, integration_tol
       )
     }
@@ -183,7 +183,7 @@ print.summary.rerand_inference <- function(x, ...) {
   }
   standard_deviation <- sqrt(1 - R2)
   cdf <- function(value) {
-    .rerand_integrate_d1(
+    .integrate_d1(
       function(x) stats::pnorm((value - sqrt(R2) * x) / standard_deviation),
       K, criterion, integration_tol
     )
@@ -195,7 +195,7 @@ print.summary.rerand_inference <- function(x, ...) {
   )$root
 }
 
-.rerand_quantile_simulation <- function(R2, K, criterion, alpha, n_sim,
+.quantile_simulation <- function(R2, K, criterion, alpha, n_sim,
                                         engine) {
   if (engine == "cpp") {
     return(as.numeric(get_quantile_cpp(
@@ -222,7 +222,7 @@ print.summary.rerand_inference <- function(x, ...) {
                              names = FALSE, type = 7))
 }
 
-.rerand_quantile <- function(R2, K, accept_prob = NULL, threshold = NULL,
+.quantile <- function(R2, K, accept_prob = NULL, threshold = NULL,
                              alpha = 0.975,
                              method = c("integration", "simulation"),
                              integration_tol = 1e-8, n_sim = 100000L,
@@ -236,18 +236,18 @@ print.summary.rerand_inference <- function(x, ...) {
   }
   method <- match.arg(method)
   engine <- .validate_engine(match.arg(engine))
-  criterion <- .rerand_resolve_criterion(
+  criterion <- .resolve_criterion(
     accept_prob = accept_prob, threshold = threshold, K = inputs$K,
     require_criterion = TRUE
   )
   if (method == "integration") {
-    return(.rerand_quantile_integration(
+    return(.quantile_integration(
       inputs$R2, inputs$K, criterion, inputs$alpha, integration_tol
     ))
   }
-  .rerand_with_seed(
+  .with_seed(
     .validate_seed(seed),
-    .rerand_quantile_simulation(
+    .quantile_simulation(
       inputs$R2, inputs$K, criterion, inputs$alpha, inputs$n_sim, engine
     )
   )
